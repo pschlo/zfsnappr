@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
+import logging
 
 from .setup_logging import setup_logging
 setup_logging()
@@ -15,8 +16,17 @@ from . import (
   version as _version
 )
 
+log = logging.getLogger(__name__)
+
 
 def cli():
+    try:
+        _entrypoint()
+    except Exception as e:
+        log.error(e)
+
+
+def _entrypoint():
     args = get_args()
     subcommand = args.subcommand
     args.__delattr__('subcommand')

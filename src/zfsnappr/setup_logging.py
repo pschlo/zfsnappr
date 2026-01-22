@@ -105,7 +105,8 @@ def _setup_root_logger(loglevel: int):
     rootlog.setLevel(loglevel)
 
     # configure formatter
-    formatter = Formatter('[%(asctime)s %(levelname)s]: %(message)s', '%H:%M:%S')
+    formatter = LeveledFormatter('%(levelname)s: %(message)s', '%H:%M:%S')
+    formatter.set_formatter(logging.INFO, Formatter())
 
     # configure stream handler
     stream_handler = StreamHandler()
@@ -113,11 +114,11 @@ def _setup_root_logger(loglevel: int):
     rootlog.addHandler(stream_handler)
 
     # configure level names
-    logging.addLevelName(logging.DEBUG, 'DBUG')
+    logging.addLevelName(logging.DEBUG, 'DEBUG')
     logging.addLevelName(logging.INFO, 'INFO')
-    logging.addLevelName(logging.WARNING, 'WARN')
-    logging.addLevelName(logging.ERROR, ' ERR')
-    logging.addLevelName(logging.CRITICAL, 'CRIT')
+    logging.addLevelName(logging.WARNING, 'WARNING')
+    logging.addLevelName(logging.ERROR, 'ERROR')
+    logging.addLevelName(logging.CRITICAL, 'CRITICAL')
 
     # log uncaught errors
     # see https://stackoverflow.com/a/16993115
@@ -129,3 +130,14 @@ def _setup_root_logger(loglevel: int):
         rootlog.critical("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
 
     sys.excepthook = handle_exception
+
+
+class LeveledFormatter(Formatter):
+    _formats: dict[int, Formatter] = {}
+    
+    def set_formatter(self, level: int, formatter: Formatter):
+        self._formats[level] = formatter
+    
+    def format(self, record):
+        formatter = self._formats.get(record.levelno) or super()
+        return formatter.format(record)
