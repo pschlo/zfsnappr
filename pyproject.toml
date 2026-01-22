@@ -1,23 +1,19 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "zfsnappr"
 version = "1.2.6"
-authors = [
-  { name="pschlo", email="author@example.com" },
-]
-description = "ZFS snapshot tool"
+description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.9"
+authors = [
+    { name = "pschlo", email = "70105856+pschlo@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
 dependencies = [
-  "python-dateutil"
+    "python-dateutil>=2.9.0.post0",
 ]
 
+[project.scripts]
+zfsnappr = "zfsnappr.cli:cli"
 
-[tool.hatch.build.targets.sdist]
-# choose here what to include in sdist
-# the wheel will only include src/zfsnappr anyway
-# see https://discuss.python.org/t/should-sdists-include-docs-and-tests/14578
-# include = [ ]
+[build-system]
+requires = ["uv_build>=0.9.24,<0.10.0"]
+build-backend = "uv_build"
