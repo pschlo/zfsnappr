@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import cast
 import logging
 
-from .common.setup_logging import setup_logging
+from .setup_logging import setup_logging
 setup_logging()
 from .args import get_args
 from .commands import (
