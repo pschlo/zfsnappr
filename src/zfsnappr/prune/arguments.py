@@ -4,11 +4,10 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
-from ..arguments import Args as GeneralArgs
+from ..arguments import Args as CommonArgs
 
 
-@dataclass
-class Args(GeneralArgs):
+class Args(CommonArgs):
   tag: list[str]
 
   keep_last: int

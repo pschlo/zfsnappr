@@ -1,6 +1,8 @@
 from __future__ import annotations
+from typing import Any, TypedDict, cast
 import argparse
 
+from .arguments import Args as CommonArgs
 from . import (
   prune as _prune,
   create as _create,
@@ -12,7 +14,11 @@ from . import (
 )
 
 
-def get_args() -> argparse.Namespace:
+class Args(CommonArgs):
+    subcommand: str
+
+
+def get_args() -> Args:
     # Parent parser for global/common options
     common = argparse.ArgumentParser(add_help=False, argument_default=argparse.SUPPRESS)
     common.add_argument('-d', '--dataset', type=str, metavar="DATASET", help="asdf")
@@ -55,7 +61,7 @@ def get_args() -> argparse.Namespace:
     args = dict(parser.parse_args()._get_kwargs())
     args = DEFAULTS | args
 
-    return argparse.Namespace(**args)
+    return cast(Args, argparse.Namespace(**args))
 
 
 class CompactHelpFormatter(argparse.HelpFormatter):

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
+from typing import cast
 import logging
 
 from .setup_logging import setup_logging
@@ -28,23 +29,23 @@ def cli():
 
 def _entrypoint():
     args = get_args()
-    subcommand = args.subcommand
-    args.__delattr__('subcommand')
+    s = args.subcommand
+    args.__delattr__("subcommand")
 
-    s = subcommand
-    if s == 'prune':
-        _prune.entrypoint(args)
-    elif s == 'create':
-        _create.entrypoint(args)
-    elif s == 'push':
-        _push.entrypoint(args)
-    elif s == 'pull':
-        _pull.entrypoint(args)
-    elif s == 'list':
-        _list.entrypoint(args)
-    elif s == 'tag':
-        _tag.entrypoint(args)
-    elif s == 'version':
-        _version.entrypoint(args)
-    else:
-        assert False
+    match s:
+        case 'prune':
+            _prune.entrypoint(cast(_prune.Args, args))
+        case 'create':
+            _create.entrypoint(cast(_create.Args, args))
+        case 'push':
+            _push.entrypoint(cast(_push.Args, args))
+        case 'pull':
+            _pull.entrypoint(cast(_pull.Args, args))
+        case 'list':
+            _list.entrypoint(cast(_list.Args, args))
+        case 'tag':
+            _tag.entrypoint(cast(_tag.Args, args))
+        case 'version':
+            _version.entrypoint(cast(_version.Args, args))
+        case _:
+            assert False

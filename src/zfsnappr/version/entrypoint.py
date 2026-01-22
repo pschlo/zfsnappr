@@ -12,8 +12,6 @@ log = logging.getLogger(__name__)
 TAG_SEPARATOR = "_"
 
 
-def entrypoint(raw_args: Namespace) -> None:
-  args = cast(Args, raw_args)
-
+def entrypoint(args: Args) -> None:
   version = importlib.metadata.version('zfsnappr')
   log.info(f"zfsnappr {version}")

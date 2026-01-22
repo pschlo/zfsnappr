@@ -21,9 +21,7 @@ class Field:
 
 # TODO: Use this list output for other subcommands as well
 
-def entrypoint(raw_args: Namespace) -> None:
-  args = cast(Args, raw_args)
-
+def entrypoint(args: Args) -> None:
   if not args.dataset:
     raise ValueError(f"No dataset provided")
 

@@ -10,9 +10,7 @@ from .arguments import Args
 from .grouping import GroupType
 
 
-def entrypoint(raw_args: Namespace):
-  args = cast(Args, raw_args)
-
+def entrypoint(args: Args):
   policy = KeepPolicy(
     last = args.keep_last,
     hourly = args.keep_hourly,

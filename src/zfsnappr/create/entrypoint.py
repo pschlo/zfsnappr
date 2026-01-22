@@ -12,9 +12,7 @@ from .arguments import Args
 log = logging.getLogger(__name__)
 
 
-def entrypoint(raw_args: Namespace) -> None:
-  args = cast(Args, raw_args)
-
+def entrypoint(args: Args) -> None:
   if not args.dataset:
     raise ValueError(f"No dataset provided")
 
