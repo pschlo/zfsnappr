@@ -31,7 +31,7 @@ def get_args() -> Args:
     )
 
     # create top-level parser
-    parser = argparse.ArgumentParser('zfsnappr', parents=[common], formatter_class=CompactHelpFormatter)
+    parser = argparse.ArgumentParser(parents=[common], formatter_class=CompactHelpFormatter)
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
     # create subcommand parsers
