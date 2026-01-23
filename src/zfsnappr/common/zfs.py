@@ -4,6 +4,7 @@ from subprocess import Popen, PIPE, CalledProcessError
 from typing import Optional, IO, Literal
 from collections.abc import Collection
 from dataclasses import dataclass
+from abc import ABC, abstractmethod
 
 
 class ZfsProperty:
@@ -94,36 +95,36 @@ class Hold:
 """
 Each method call should correspond to exactly one CLI call
 """
-class ZfsCli:
-  def run_text_command(self, cmd: list[str]) -> str:
-    p: Popen[str] = self.start_command(cmd, stdout=PIPE, text=True)
+class ZfsCli(ABC):
+  @abstractmethod
+  def _start_command(self, cmd: list[str], stdin=None, stdout=None, stderr=None, text=False) -> Popen: ...
+
+  def _run_text_command(self, cmd: list[str]) -> str:
+    p: Popen[str] = self._start_command(cmd, stdout=PIPE, text=True)
     stdout, _ = p.communicate()
     if p.returncode > 0:
       raise CalledProcessError(p.returncode, cmd=p.args, output=stdout)
     return stdout
-  
-  def start_command(self, cmd: list[str], stdin=None, stdout=None, stderr=None, text=False) -> Popen:
-    return Popen(cmd, stdin=stdin, stdout=stdout, stderr=stderr, text=text)
-  
+
   def send_snapshot_async(self, snapshot_fullname: str, base_fullname: Optional[str] = None) -> Popen[bytes]:
     cmd = ['zfs', 'send']
     if base_fullname:
       cmd += ['-i', base_fullname]
     cmd += [snapshot_fullname]
-    return self.start_command(cmd, stdout=PIPE)
-  
+    return self._start_command(cmd, stdout=PIPE)
+
   def receive_snapshot_async(self, dataset: str, stdin: IO[bytes], properties: dict[str, str] = {}) -> Popen[bytes]:
     cmd = ['zfs', 'receive']
     for property, value in properties.items():
       cmd += ['-o', f'{property}={value}']
     cmd += [dataset]
-    return self.start_command(cmd, stdin=stdin)
+    return self._start_command(cmd, stdin=stdin)
 
   # TrueNAS CORE 13.0 does not support holds -p, so we do not fetch timestamp
   def get_holds(self, snapshots_fullnames: Collection[str]) -> set[Hold]:
     if not snapshots_fullnames:
       return set()
-    lines = self.run_text_command(['zfs', 'holds', '-H', *snapshots_fullnames]).splitlines()
+    lines = self._run_text_command(['zfs', 'holds', '-H', *snapshots_fullnames]).splitlines()
     holds: set[Hold] = set()
     for line in lines:
       snapname, tag, _ = line.split('\t')
@@ -140,16 +141,16 @@ class ZfsCli:
   def hold(self, snapshots_fullnames: Collection[str], tag: str) -> None:
     if not snapshots_fullnames:
       return
-    self.run_text_command(['zfs', 'hold', tag, *snapshots_fullnames])
+    self._run_text_command(['zfs', 'hold', tag, *snapshots_fullnames])
 
   def release(self, snapshots_fullnames: Collection[str], tag: str) -> None:
     if not snapshots_fullnames:
       return
-    self.run_text_command(['zfs', 'release', tag, *snapshots_fullnames])
+    self._run_text_command(['zfs', 'release', tag, *snapshots_fullnames])
 
   def get_pool_from_dataset(self, dataset: str) -> Pool:
     name = dataset.split('/')[0]
-    guid = self.run_text_command(['zpool', 'get', '-Hp', '-o', 'value', 'guid', name])
+    guid = self._run_text_command(['zpool', 'get', '-Hp', '-o', 'value', 'guid', name])
     return Pool(name=name, guid=int(guid))
   
   def get_datasets(self, names: Collection[str], properties: Collection[str] = []) -> list[Dataset]:
@@ -158,7 +159,7 @@ class ZfsCli:
     properties = list(dict.fromkeys(REQUIRED_PROPS + list(properties)))  # eliminate duplicates
     
     cmd = ['zfs', 'get', '-Hp', '-o', 'value', ','.join(properties), *names]
-    lines = self.run_text_command(cmd).splitlines()
+    lines = self._run_text_command(cmd).splitlines()
 
     datasets: list[Dataset] = []
     for i in range(len(names)):
@@ -176,7 +177,7 @@ class ZfsCli:
     properties = list(dict.fromkeys(REQUIRED_PROPS + list(properties)))  # eliminate duplicates
 
     cmd = ['zfs', 'list', '-Hp', '-o', ','.join(properties)]
-    lines = self.run_text_command(cmd).splitlines()
+    lines = self._run_text_command(cmd).splitlines()
 
     datasets: list[Dataset] = []
     for line in lines:
@@ -192,11 +193,11 @@ class ZfsCli:
     for property, value in properties.items():
       cmd += ['-o', f'{property}={value}']
     cmd += [fullname]
-    self.run_text_command(cmd)
+    self._run_text_command(cmd)
   
   def rename_snapshot(self, fullname: str, new_shortname: str) -> None:
     cmd = ['zfs', 'rename', fullname, new_shortname]
-    self.run_text_command(cmd)
+    self._run_text_command(cmd)
 
   def get_snapshots(self, fullnames: Collection[str], properties: Collection[str] = []) -> list[Snapshot]:
     if not fullnames:
@@ -204,7 +205,7 @@ class ZfsCli:
     properties = list(dict.fromkeys(REQUIRED_PROPS + list(properties)))  # eliminate duplicates
     
     cmd = ['zfs', 'get', '-Hp', '-o', 'value', ','.join(properties), *fullnames]
-    lines = self.run_text_command(cmd).splitlines()
+    lines = self._run_text_command(cmd).splitlines()
 
     snaps: list[Snapshot] = []
     for i in range(len(fullnames)):
@@ -228,7 +229,7 @@ class ZfsCli:
       cmd += ['-s' if not reverse else '-S', sort_by]
     if dataset:
       cmd += [dataset]
-    lines = self.run_text_command(cmd).splitlines()
+    lines = self._run_text_command(cmd).splitlines()
 
     snapshots: list[Snapshot] = []
     for line in lines:
@@ -240,17 +241,18 @@ class ZfsCli:
   
   def set_tags(self, snap_fullname: str, tags: Collection[str]):
     cmd = ['zfs', 'set', f"{ZfsProperty.CUSTOM_TAGS}={','.join(tags)}", snap_fullname]
-    self.run_text_command(cmd)
+    self._run_text_command(cmd)
 
   def destroy_snapshots(self, dataset: str, snapshots_shortnames: Collection[str]) -> None:
     if not snapshots_shortnames:
       return
     shortnames_str = ','.join(snapshots_shortnames)
-    self.run_text_command(['zfs', 'destroy', f'{dataset}@{shortnames_str}'])
+    self._run_text_command(['zfs', 'destroy', f'{dataset}@{shortnames_str}'])
 
 
 class LocalZfsCli(ZfsCli):
-  pass
+  def _start_command(self, cmd: list[str], stdin=None, stdout=None, stderr=None, text=False) -> Popen:
+    return Popen(cmd, stdin=stdin, stdout=stdout, stderr=stderr, text=text)
 
 
 class RemoteZfsCli(ZfsCli):
@@ -267,6 +269,6 @@ class RemoteZfsCli(ZfsCli):
     cmd += [host]
     self.ssh_command = cmd
 
-  def start_command(self, cmd: list[str], stdin=None, stdout=None, stderr=None, text=False) -> Popen:
+  def _start_command(self, cmd: list[str], stdin=None, stdout=None, stderr=None, text=False) -> Popen:
     cmd = self.ssh_command + cmd
-    return super().start_command(cmd, stdin, stdout, stderr, text)
+    return Popen(cmd, stdin=stdin, stdout=stdout, stderr=stderr, text=text)
