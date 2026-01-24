@@ -1,10 +1,10 @@
 from __future__ import annotations
-from argparse import Namespace
 from typing import Optional, cast, Literal, Callable
 import logging
 
 from zfsnappr.common.zfs import LocalZfsCli, ZfsProperty, ZfsCli, Snapshot
 from zfsnappr.common import filter
+from zfsnappr.common.utils import get_zfs_cli
 from .args import Args
 
 
@@ -14,7 +14,7 @@ TAG_SEPARATOR = "_"
 
 
 def entrypoint(args: Args) -> None:
-  cli = LocalZfsCli()
+  cli, dataset = get_zfs_cli(args.dataset_spec)
 
   # --- determine operations ---
   operations: list[
@@ -44,11 +44,11 @@ def entrypoint(args: Args) -> None:
   if not operations:
     log.info(f"No tag operations specified, nothing to do")
     return
-  
+
 
   # --- get snapshots ---
   props = [p for p in [args.add_from_prop, args.set_from_prop] if p is not None]
-  snapshots = cli.get_all_snapshots(args.dataset, recursive=args.recursive, properties=props)
+  snapshots = cli.get_all_snapshots(dataset, recursive=args.recursive, properties=props)
   snapshots = filter.filter_snaps(snapshots, tag=filter.parse_tags(args.tag), shortname=filter.parse_shortnames(args.snapshot))
   if not snapshots:
     log.info(f"No snapshots, nothing to do")
@@ -71,7 +71,6 @@ def entrypoint(args: Args) -> None:
       # apply tag changes
       if tags != snap.tags and tags is not None:
         cli.set_tags(snap.longname, tags)
-
 
 
 def get_from_prop(snap: Snapshot, property: str) -> Optional[set[str]]:

@@ -5,6 +5,7 @@ import logging
 
 from zfsnappr.common.zfs import LocalZfsCli, RemoteZfsCli
 from zfsnappr.common.replication import parse_remote, replicate
+from zfsnappr.common.utils import get_zfs_cli
 from .args import Args
 
 
@@ -12,21 +13,21 @@ log = logging.getLogger(__name__)
 
 
 def entrypoint(args: Args) -> None:
-  if not args.dataset:
+  dest_cli, dest_dataset = get_zfs_cli(args.dataset_spec)
+  if dest_dataset is None:
     raise ValueError(f"No dataset provided")
-  local_dataset: str = args.dataset
-  user, host, remote_dataset = parse_remote(args.remote)
+  
+  source_cli, source_dataset = get_zfs_cli(args.source)
+  if source_dataset is None:
+    raise ValueError(f"No source dataset provided")
 
-  log.info(f'Pulling from remote source dataset "{remote_dataset}" to local dest dataset "{local_dataset}"')
-
-  local_cli = LocalZfsCli()
-  remote_cli = RemoteZfsCli(host=host, user=user, port=args.port)
+  log.info(f'Pulling from source dataset "{source_dataset}" to dest dataset "{dest_dataset}"')
 
   replicate(
-    source_cli=remote_cli,
-    source_dataset=remote_dataset,
-    dest_cli=local_cli,
-    dest_dataset=local_dataset,
+    source_cli=source_cli,
+    source_dataset=source_dataset,
+    dest_cli=dest_cli,
+    dest_dataset=dest_dataset,
     recursive=args.recursive,
     initialize=args.init
   )

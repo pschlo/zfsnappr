@@ -21,11 +21,11 @@ class Args(CommonArgs):
 def get_args() -> Args:
     # Parent parser for global/common options
     common = argparse.ArgumentParser(add_help=False, argument_default=argparse.SUPPRESS)
-    common.add_argument('-d', '--dataset', type=str, metavar="DATASET")
+    common.add_argument('-d', '--dataset', type=str, metavar="DATASET", dest="dataset_spec")
     common.add_argument('-r', '--recursive', action='store_true')
     common.add_argument('-n', '--dry-run', action='store_true')
     DEFAULTS = dict(
-        dataset=None,
+        dataset_spec=None,
         recursive=False,
         dry_run=False
     )

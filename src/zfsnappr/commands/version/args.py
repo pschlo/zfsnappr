@@ -8,8 +8,8 @@ from zfsnappr.common.args import CommonArgs
 
 @dataclass
 class Args(CommonArgs):
-  ...
+  pass
 
 
 def setup(parser: ArgumentParser) -> None:
-  ...
+  pass

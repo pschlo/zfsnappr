@@ -7,12 +7,10 @@ from zfsnappr.common.args import CommonArgs
 
 
 class Args(CommonArgs):
-  remote: str
-  port: Optional[int]
+  dest: str
   init: bool
 
 
 def setup(parser: ArgumentParser) -> None:
-  parser.add_argument('remote', metavar='USER@HOST:DATASET')
-  parser.add_argument('-p', '--port', type=int)
+  parser.add_argument('dest', metavar='USER@HOST:PORT/DATASET')
   parser.add_argument('--init', action='store_true')

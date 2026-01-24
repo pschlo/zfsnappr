@@ -1,9 +1,9 @@
 from __future__ import annotations
-from argparse import Namespace
 from typing import cast, Optional, TYPE_CHECKING
 
 from zfsnappr.common.zfs import LocalZfsCli, Snapshot, ZfsProperty
 from zfsnappr.common import filter
+from zfsnappr.common.utils import get_zfs_cli
 
 from .policy import KeepPolicy
 from .prune_snaps import prune_snapshots
@@ -33,7 +33,8 @@ def entrypoint(args: Args):
   )
 
   cli = LocalZfsCli()
-  snapshots = cli.get_all_snapshots(dataset=args.dataset, recursive=args.recursive, sort_by=ZfsProperty.CREATION)
+  cli, dataset = get_zfs_cli(args.dataset_spec)
+  snapshots = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive, sort_by=ZfsProperty.CREATION)
   snapshots = filter.filter_snaps(snapshots, tag=filter.parse_tags(args.tag))
 
   get_grouptype: dict[str, Optional[GroupType]] = {

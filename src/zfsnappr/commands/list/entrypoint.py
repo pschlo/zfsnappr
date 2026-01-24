@@ -1,12 +1,12 @@
 from __future__ import annotations
-from argparse import Namespace
 from typing import Optional, Callable, cast
 from dataclasses import dataclass
 import logging
 
-from zfsnappr.common.zfs import LocalZfsCli, Snapshot, Hold, ZfsProperty
+from zfsnappr.common.zfs import Snapshot, Hold, ZfsProperty
 from .args import Args
 from zfsnappr.common.filter import filter_snaps, parse_tags
+from zfsnappr.common.utils import get_zfs_cli
 
 
 log = logging.getLogger(__name__)
@@ -22,18 +22,16 @@ class Field:
 # TODO: Use this list output for other subcommands as well
 
 def entrypoint(args: Args) -> None:
-  if not args.dataset:
-    raise ValueError(f"No dataset provided")
+  cli, dataset = get_zfs_cli(args.dataset_spec)
 
-  cli = LocalZfsCli()
-  snaps = cli.get_all_snapshots(dataset=args.dataset, recursive=args.recursive, sort_by=ZfsProperty.CREATION)
+  snaps = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive, sort_by=ZfsProperty.CREATION)
   snaps = filter_snaps(snaps, tag=parse_tags(args.tag))
 
   # get hold tags for all snapshots with holds
   holdtags: dict[str, set[str]] = {s.longname: set() for s in snaps}
   for hold in cli.get_holds([s.longname for s in snaps]):
     holdtags[hold.snap_longname].add(hold.tag)
-  
+
   fields: list[Field] = [
     Field('DATASET',    lambda s: s.dataset),
     Field('SHORT NAME', lambda s: s.shortname),

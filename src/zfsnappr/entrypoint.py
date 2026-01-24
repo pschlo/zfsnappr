@@ -25,6 +25,7 @@ def cli():
         _entrypoint()
     except Exception as e:
         log.error(e)
+        # raise
 
 
 def _entrypoint():
