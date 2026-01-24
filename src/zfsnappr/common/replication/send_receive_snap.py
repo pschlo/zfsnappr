@@ -1,10 +1,26 @@
 from typing import Optional, Callable, Union
 from subprocess import CalledProcessError
+import logging
+import threading
 import time
 
 from ..zfs import ZfsCli, Snapshot, ZfsProperty, Dataset
 
 Holdtag = Union[str, Callable[[Dataset],str]]
+
+log = logging.getLogger(__name__)
+
+
+def start_progress_thread(send_proc, on_progress):
+    def _reader():
+        assert send_proc.stderr is not None
+        for raw in iter(send_proc.stderr.readline, b""):
+            line: str = raw.decode("utf-8", errors="replace").rstrip("\n")
+            on_progress(line)
+        send_proc.stderr.close()
+    t = threading.Thread(target=_reader, daemon=True)
+    t.start()
+    return t
 
 
 def _send_receive(
@@ -13,20 +29,26 @@ def _send_receive(
   snapshot: Snapshot,
   base: Optional[Snapshot],
   holdtags: tuple[Holdtag,Holdtag],
-  properties: dict[str, str] = {}
+  properties: dict[str, str] = {},
 ) -> None:
   src_cli, dest_cli = clis
   send_proc, recv_proc = None, None
   terminated_send, terminated_recv = False, False
 
   try:
-    # create sending and receiving process
+    # 1) Start sender: stdout=PIPE for data, stderr=PIPE for progress
     send_proc = src_cli.send_snapshot_async(snapshot.longname, base.longname if base else None)
     assert send_proc.stdout is not None
+    assert send_proc.stderr is not None
+
+    # 2) Start receiver, feeding it the sender's stdout
     recv_proc = dest_cli.receive_snapshot_async(dest_dataset, send_proc.stdout, properties)
 
     # Parent no longer needs its copy of the pipe
     send_proc.stdout.close()
+
+    # 4) Start a thread to drain progress output
+    progress_thread = start_progress_thread(send_proc, print)
     
     # wait for both processes to terminate
     while True:
@@ -48,6 +70,8 @@ def _send_receive(
 
       time.sleep(0.1)
 
+    progress_thread.join(timeout=1)
+
     # check exit codes
     for p in send_proc, recv_proc:
       if p.returncode != 0:
@@ -64,6 +88,7 @@ def _send_receive(
     dest_cli.hold([snapshot.with_dataset(dest_dataset).longname], dest_tag)
   
   except BaseException:
+    log.info("Cleaning up")
     # On Ctrl+C or any exception, try to stop both sides.
     # terminate() is "graceful-ish"; if you need hard kill, follow with kill().
     for p in (recv_proc, send_proc):

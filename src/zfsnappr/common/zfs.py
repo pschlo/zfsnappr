@@ -107,11 +107,11 @@ class ZfsCli(ABC):
     return stdout
 
   def send_snapshot_async(self, snapshot_fullname: str, base_fullname: Optional[str] = None) -> Popen[bytes]:
-    cmd = ['zfs', 'send']
+    cmd = ['zfs', 'send', '-v']
     if base_fullname:
       cmd += ['-i', base_fullname]
     cmd += [snapshot_fullname]
-    return self._start_command(cmd, stdout=PIPE)
+    return self._start_command(cmd, stdout=PIPE, stderr=PIPE)
 
   def receive_snapshot_async(self, dataset: str, stdin: IO[bytes], properties: dict[str, str] = {}) -> Popen[bytes]:
     cmd = ['zfs', 'receive']
