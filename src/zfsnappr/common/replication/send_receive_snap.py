@@ -16,41 +16,69 @@ def _send_receive(
   properties: dict[str, str] = {}
 ) -> None:
   src_cli, dest_cli = clis
+  send_proc, recv_proc = None, None
+  terminated_send, terminated_recv = False, False
 
-  # create sending and receiving process
-  send_proc = src_cli.send_snapshot_async(snapshot.longname, base.longname if base else None)
-  assert send_proc.stdout is not None
-  recv_proc = dest_cli.receive_snapshot_async(dest_dataset, send_proc.stdout, properties)
-  
-  # wait for both processes to terminate
-  while True:
-    send_status, recv_status = send_proc.poll(), recv_proc.poll()
-    if send_status is not None and recv_status is not None:
-      # both terminated
-      break
-    if send_status is not None and send_status > 0:
-      # zfs send process died with error
-      recv_proc.terminate()
-    if recv_status is not None and recv_status > 0:
-      # zfs receive process died with error
-      send_proc.terminate()
-    time.sleep(0.1)
+  try:
+    # create sending and receiving process
+    send_proc = src_cli.send_snapshot_async(snapshot.longname, base.longname if base else None)
+    assert send_proc.stdout is not None
+    recv_proc = dest_cli.receive_snapshot_async(dest_dataset, send_proc.stdout, properties)
 
-  # check exit codes
-  for p in send_proc, recv_proc:
-    if p.returncode > 0:
-      raise CalledProcessError(p.returncode, cmd=p.args)
+    # Parent no longer needs its copy of the pipe
+    send_proc.stdout.close()
     
-  # set tags on dest snapshot
-  if snapshot.tags is not None:
-    dest_cli.set_tags(snapshot.with_dataset(dest_dataset).longname, snapshot.tags)
+    # wait for both processes to terminate
+    while True:
+      send_status, recv_status = send_proc.poll(), recv_proc.poll()
 
-  # hold snaps
-  src_tag = holdtags[0] if isinstance(holdtags[0], str) else holdtags[0](dest_cli.get_dataset(dest_dataset))
-  dest_tag = holdtags[1] if isinstance(holdtags[1], str) else holdtags[1](src_cli.get_dataset(snapshot.dataset))
-  src_cli.hold([snapshot.longname], src_tag)
-  dest_cli.hold([snapshot.with_dataset(dest_dataset).longname], dest_tag)
+      if send_status is not None and recv_status is not None:
+        # both terminated
+        break
 
+      if send_status not in (None, 0) and not terminated_recv:
+        # zfs send process died with error
+        recv_proc.terminate()
+        terminated_recv = True
+
+      if recv_status not in (None, 0) and not terminated_send:
+        # zfs receive process died with error
+        send_proc.terminate()
+        terminated_send = True
+
+      time.sleep(0.1)
+
+    # check exit codes
+    for p in send_proc, recv_proc:
+      if p.returncode != 0:
+        raise CalledProcessError(p.returncode, cmd=p.args)
+      
+    # set tags on dest snapshot
+    if snapshot.tags is not None:
+      dest_cli.set_tags(snapshot.with_dataset(dest_dataset).longname, snapshot.tags)
+
+    # hold snaps
+    src_tag = holdtags[0] if isinstance(holdtags[0], str) else holdtags[0](dest_cli.get_dataset(dest_dataset))
+    dest_tag = holdtags[1] if isinstance(holdtags[1], str) else holdtags[1](src_cli.get_dataset(snapshot.dataset))
+    src_cli.hold([snapshot.longname], src_tag)
+    dest_cli.hold([snapshot.with_dataset(dest_dataset).longname], dest_tag)
+  
+  except BaseException:
+    # On Ctrl+C or any exception, try to stop both sides.
+    # terminate() is "graceful-ish"; if you need hard kill, follow with kill().
+    for p in (recv_proc, send_proc):
+        if p is not None and p.poll() is None:
+            p.terminate()
+    for p in (recv_proc, send_proc):
+        if p is not None:
+            try:
+                p.wait(timeout=5)
+            except Exception:
+                try:
+                    p.kill()
+                except Exception:
+                    pass
+    raise
 
 
 def send_receive_initial(
