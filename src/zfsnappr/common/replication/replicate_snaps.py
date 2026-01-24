@@ -46,7 +46,7 @@ def replicate_snaps(source_cli: ZfsCli, source_snaps: Collection[Snapshot], dest
         holdtags=(holdtag_src, holdtag_dest)
       )
     else:
-      raise RuntimeError(f'Destination dataset does not exists and will not be created')
+      raise RuntimeError(f'Destination dataset does not exist and will not be created')
 
   # get dest snaps
   dest_snaps = dest_cli.get_all_snapshots(dest_dataset, sort_by=ZfsProperty.CREATION, reverse=True)
