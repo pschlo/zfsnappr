@@ -37,11 +37,10 @@ def replicate_snaps(source_cli: ZfsCli, source_snaps: Collection[Snapshot], dest
   # ensure dest dataset exists
   dest_exists: bool = any(dest_dataset == d.name for d in dest_cli.get_all_datasets())
   print("DEST_EXISTS", dest_exists)
-  print("dest_dataset", dest_dataset)
   print("all datasets:")
-  print(dest_cli.get_all_datasets())
-  print([d.name for d in dest_cli.get_all_datasets()])
-  exit()
+  # print(dest_cli.get_all_datasets())
+  print(d.name for d in dest_cli.get_all_datasets())
+  print()
   if not dest_exists:
     if initialize:
       log.info(f"Creating destination dataset by transferring the oldest snapshot")
