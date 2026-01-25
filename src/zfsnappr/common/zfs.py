@@ -21,7 +21,7 @@ class ZfsProperty(StrEnum):
   CUSTOM_TAGS = 'zfsnappr:tags'  # the user property used to store and read tags
 
 
-class ZfsType(StrEnum):
+class ZfsDatasetType(StrEnum):
   FILESYSTEM = 'filesystem'
   VOLUME = 'volume'
   SNAPSHOT = 'snapshot'
@@ -41,7 +41,7 @@ class Snapshot:
   timestamp: datetime
   tags: Optional[set[str]]
   holds: int
-  type: ZfsType
+  type: ZfsDatasetType
 
   def __init__(self, properties: dict[ZfsProperty, str]):
     P = ZfsProperty
@@ -52,7 +52,7 @@ class Snapshot:
     self.guid = int(ps[P.GUID])
     self.timestamp = datetime.fromtimestamp(int(ps[P.CREATION]))
     self.holds = int(ps[P.USERREFS])
-    self.type = ZfsType(ps[P.TYPE])
+    self.type = ZfsDatasetType(ps[P.TYPE])
 
     if ps[P.CUSTOM_TAGS] == '-':
       self.tags = None
@@ -87,6 +87,7 @@ class Dataset:
 
   name: str
   guid: int
+  type: ZfsDatasetType
 
   def __init__(self, properties: dict[str,str]):
     P = ZfsProperty
@@ -95,6 +96,7 @@ class Dataset:
     self.properties = ps
     self.name = ps[P.NAME]
     self.guid = int(ps[P.GUID])
+    self.type = ZfsDatasetType(ps[P.TYPE])
 
   def __repr__(self) -> str:
     return f"Dataset({self.properties})"

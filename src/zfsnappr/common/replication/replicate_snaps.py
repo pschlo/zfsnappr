@@ -39,9 +39,11 @@ def replicate_snaps(source_cli: ZfsCli, source_snaps: Collection[Snapshot], dest
   if not dest_exists:
     if initialize:
       log.info(f"Creating destination dataset '{dest_dataset}' by transferring the oldest snapshot")
+      source_dataset_type = source_cli.get_dataset(source_dataset).type
       send_receive_initial(
         clis=(source_cli, dest_cli),
         dest_dataset=dest_dataset,
+        source_dataset_type=source_dataset_type,
         snapshot=source_snaps[-1],
         holdtags=(holdtag_src, holdtag_dest)
       )
