@@ -9,7 +9,9 @@ from zfsnappr.common.args import CommonArgs
 
 
 class Args(CommonArgs):
+  # Filter options
   tag: list[str]
+  snapshot: list[str]
 
   keep_last: int
   keep_hourly: int
@@ -50,6 +52,7 @@ WITHIN_OPTS = [
 
 
 def setup(parser: ArgumentParser) -> None:
+  # filter snapshots by tag
   parser.add_argument('--tag', type=str, action='append', default=[])
 
   # keep policy arguments
@@ -60,3 +63,6 @@ def setup(parser: ArgumentParser) -> None:
   parser.add_argument('--keep-name', type=re.compile, metavar="REGEX")
   parser.add_argument('--group-by', type=str, metavar='GROUP', choices={'', 'dataset'}, default='dataset')
   parser.add_argument('--keep-tag', type=str, action='append', default=[])
+
+  # filter snapshots by name
+  parser.add_argument('snapshot', nargs='*', type=str)

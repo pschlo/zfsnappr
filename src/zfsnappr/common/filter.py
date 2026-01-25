@@ -16,6 +16,7 @@ def parse_shortnames(shortnames: Collection[str]) -> Optional[set[str]]:
 
 def filter_snaps(
   snapshots: Collection[Snapshot],
+  *,
   tag: Optional[Collection[Collection[str]]] = None,
   dataset: Optional[Collection[str]] = None,
   shortname: Optional[Collection[str]] = None

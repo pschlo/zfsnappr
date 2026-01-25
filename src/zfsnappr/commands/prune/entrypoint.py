@@ -35,11 +35,18 @@ def entrypoint(args: Args):
   cli = LocalZfsCli()
   cli, dataset = get_zfs_cli(args.dataset_spec)
   snapshots = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive, sort_by=ZfsProperty.CREATION)
-  snapshots = filter.filter_snaps(snapshots, tag=filter.parse_tags(args.tag))
+  snapshots = filter.filter_snaps(snapshots, tag=filter.parse_tags(args.tag), shortname=filter.parse_shortnames(args.snapshot))
 
   get_grouptype: dict[str, Optional[GroupType]] = {
     'dataset': GroupType.DATASET,
     '': None
   }
 
-  prune_snapshots(cli, snapshots, policy, dry_run=args.dry_run, group_by=get_grouptype[args.group_by])
+  prune_snapshots(
+    cli,
+    snapshots,
+    policy,
+    dry_run=args.dry_run,
+    group_by=get_grouptype[args.group_by],
+    allow_destroy_all=bool(args.snapshot)  # only allow if specific snapshots were passed
+  )

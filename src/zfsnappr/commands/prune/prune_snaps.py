@@ -19,6 +19,7 @@ def prune_snapshots(
   *,
   group_by: Optional[GroupType] = GroupType.DATASET,
   dry_run: bool = True,
+  allow_destroy_all: bool = False
 ) -> None:
   """
   Prune given snapshots according to keep policy
@@ -44,29 +45,27 @@ def prune_snapshots(
       log.info(f'Group "{_group}"')
       print_policy_result(_keep, _destroy)
 
-  if not keep:
+  if not keep and not allow_destroy_all:
     raise RuntimeError(f"Refusing to destroy all snapshots")
   if not destroy:
     log.info("No snapshots to prune")
     return
   if dry_run:
+    log.info("Dry-run enabled, not destroying any snapshots")
     return
 
-  log.info(f'Destroying snapshots')
-  for snap in destroy:
+  log.info(f'Destroying...')
+  for i, snap in enumerate(destroy):
     try:
       cli.destroy_snapshots(snap.dataset, [snap.shortname])
     except CalledProcessError:
       log.warning(f'Failed to destroy snapshot "{snap.longname}"')
-
-
+    log.info(f"    {i+1}/{len(destroy)} destroyed")
 
 
 def print_policy_result(keep: Collection[Snapshot], destroy: Collection[Snapshot]):
   log.info(f'Keeping {len(keep)} snapshots')
-  for snap in keep:
-    print_snap(snap)
-  log.info(f'Destroying {len(destroy)} snapshots')
+  log.info(f'Destroying {len(destroy)} snapshots:')
   for snap in destroy:
     print_snap(snap)
 
