@@ -29,4 +29,4 @@ def entrypoint(args: Args) -> None:
   for hold in holds:
     if hold.tag.startswith('zfsnappr'):
       log.info(f"Releasing hold '{hold.tag}' on snapshot {hold.snap_longname}")
-      cli.release_hold(hold.snap_longname, tag=hold.tag)
+      cli.release_hold([hold.snap_longname], tag=hold.tag)
