@@ -116,10 +116,7 @@ def send_receive_initial(
   properties: dict[ZfsProperty, str] = {
     ZfsProperty.READONLY: 'on'
   }
-  print("source dataset type:", source_dataset_type)
-  print("snapshot type:", snapshot.type)
   if source_dataset_type == ZfsDatasetType.FILESYSTEM:
-    print("dataset is filesystem!")
     properties |= {
        ZfsProperty.ATIME: 'off',
        ZfsProperty.CANMOUNT: 'off',

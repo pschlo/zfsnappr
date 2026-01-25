@@ -41,7 +41,6 @@ class Snapshot:
   timestamp: datetime
   tags: Optional[set[str]]
   holds: int
-  type: ZfsDatasetType
 
   def __init__(self, properties: dict[ZfsProperty, str]):
     P = ZfsProperty
@@ -52,7 +51,6 @@ class Snapshot:
     self.guid = int(ps[P.GUID])
     self.timestamp = datetime.fromtimestamp(int(ps[P.CREATION]))
     self.holds = int(ps[P.USERREFS])
-    self.type = ZfsDatasetType(ps[P.TYPE])
 
     if ps[P.CUSTOM_TAGS] == '-':
       self.tags = None
