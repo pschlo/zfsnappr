@@ -5,24 +5,35 @@ from typing import Optional, IO, Literal
 from collections.abc import Collection
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from enum import StrEnum
 
 
-class ZfsProperty:
+class ZfsProperty(StrEnum):
   NAME = 'name'
   CREATION = 'creation'
   GUID = 'guid'
   USERREFS = 'userrefs'
   READONLY = 'readonly'
   ATIME = 'atime'
+  MOUNTPOINT = 'mountpoint'
+  CANMOUNT = 'canmount'
+  TYPE = 'type'
   CUSTOM_TAGS = 'zfsnappr:tags'  # the user property used to store and read tags
 
 
+class ZfsType(StrEnum):
+  FILESYSTEM = 'filesystem'
+  VOLUME = 'volume'
+  SNAPSHOT = 'snapshot'
+  BOOKMARK = 'bookmark'
+
+
 # properties that will always be fetched
-REQUIRED_PROPS = [ZfsProperty.NAME, ZfsProperty.CREATION, ZfsProperty.GUID, ZfsProperty.CUSTOM_TAGS, ZfsProperty.USERREFS]
+REQUIRED_PROPS = [ZfsProperty.NAME, ZfsProperty.CREATION, ZfsProperty.GUID, ZfsProperty.CUSTOM_TAGS, ZfsProperty.USERREFS, ZfsProperty.TYPE]
 
 
 class Snapshot:
-  properties: dict[str, str]
+  properties: dict[ZfsProperty, str]
 
   dataset: str
   shortname: str
@@ -30,8 +41,9 @@ class Snapshot:
   timestamp: datetime
   tags: Optional[set[str]]
   holds: int
+  type: ZfsType
 
-  def __init__(self, properties: dict[str,str]):
+  def __init__(self, properties: dict[ZfsProperty, str]):
     P = ZfsProperty
     ps = properties
 
@@ -40,6 +52,7 @@ class Snapshot:
     self.guid = int(ps[P.GUID])
     self.timestamp = datetime.fromtimestamp(int(ps[P.CREATION]))
     self.holds = int(ps[P.USERREFS])
+    self.type = ZfsType(ps[P.TYPE])
 
     if ps[P.CUSTOM_TAGS] == '-':
       self.tags = None
@@ -113,8 +126,8 @@ class ZfsCli(ABC):
     cmd += [snapshot_fullname]
     return self._start_command(cmd, stdout=PIPE, stderr=PIPE)
 
-  def receive_snapshot_async(self, dataset: str, stdin: IO[bytes], properties: dict[str, str] = {}) -> Popen[bytes]:
-    cmd = ['zfs', 'receive']
+  def receive_snapshot_async(self, dataset: str, stdin: IO[bytes], properties: dict[ZfsProperty, str] = {}) -> Popen[bytes]:
+    cmd = ['zfs', 'receive', '-u']
     for property, value in properties.items():
       cmd += ['-o', f'{property}={value}']
     cmd += [dataset]
@@ -199,7 +212,7 @@ class ZfsCli(ABC):
     cmd = ['zfs', 'rename', fullname, new_shortname]
     self._run_text_command(cmd)
 
-  def get_snapshots(self, fullnames: Collection[str], properties: Collection[str] = []) -> list[Snapshot]:
+  def get_snapshots(self, fullnames: Collection[str], properties: Collection[ZfsProperty] = []) -> list[Snapshot]:
     if not fullnames:
       return []
     properties = list(dict.fromkeys(REQUIRED_PROPS + list(properties)))  # eliminate duplicates
@@ -216,7 +229,7 @@ class ZfsCli(ABC):
   def get_all_snapshots(self,
     dataset: Optional[str] = None,
     recursive: bool = False,
-    properties: Collection[str] = [],
+    properties: Collection[ZfsProperty] = [],
     sort_by: Optional[str] = None,
     reverse: bool = False
   ) -> list[Snapshot]:
@@ -238,7 +251,7 @@ class ZfsCli(ABC):
 
     return snapshots
 
-  
+
   def set_tags(self, snap_fullname: str, tags: Collection[str]):
     cmd = ['zfs', 'set', f"{ZfsProperty.CUSTOM_TAGS}={','.join(tags)}", snap_fullname]
     self._run_text_command(cmd)

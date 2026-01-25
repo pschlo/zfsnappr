@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 
-from ..zfs import ZfsCli, Snapshot, ZfsProperty, Dataset
+from ..zfs import ZfsCli, Snapshot, ZfsProperty, Dataset, ZfsType
 
 Holdtag = Union[str, Callable[[Dataset],str]]
 
@@ -29,7 +29,7 @@ def _send_receive(
   snapshot: Snapshot,
   base: Optional[Snapshot],
   holdtags: tuple[Holdtag,Holdtag],
-  properties: dict[str, str] = {},
+  properties: dict[ZfsProperty, str] = {},
 ) -> None:
   src_cli, dest_cli = clis
   send_proc, recv_proc = None, None
@@ -112,15 +112,22 @@ def send_receive_initial(
   snapshot: Snapshot,
   holdtags: tuple[Callable[[Dataset], str], Callable[[Dataset], str]]
 ) -> None:
+  properties: dict[ZfsProperty, str] = {
+    ZfsProperty.READONLY: 'on'
+  }
+  if snapshot.type == ZfsType.FILESYSTEM:
+    properties |= {
+       ZfsProperty.ATIME: 'off',
+       ZfsProperty.CANMOUNT: 'off',
+       ZfsProperty.MOUNTPOINT: 'none'
+    }
   _send_receive(
     clis=clis,
     dest_dataset=dest_dataset,
     snapshot=snapshot,
     base=None,
     holdtags=holdtags,
-    properties={
-      ZfsProperty.READONLY: 'on',
-    },
+    properties=properties
   )
   
 
