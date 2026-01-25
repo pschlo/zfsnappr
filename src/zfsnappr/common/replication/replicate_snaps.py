@@ -18,7 +18,7 @@ def holdtag_dest(src_dataset: Dataset):
 
 
 # TODO: raw send for encrypted datasets?
-def replicate_snaps(source_cli: ZfsCli, source_snaps: Collection[Snapshot], dest_cli: ZfsCli, dest_dataset: str, initialize: bool):
+def replicate_snaps(source_cli: ZfsCli, source_snaps: Collection[Snapshot], dest_cli: ZfsCli, dest_dataset: str, source_dataset: str, initialize: bool):
   """
   replicates source_snaps to dest_dataset
   all source_snaps must be of same dataset
@@ -52,12 +52,12 @@ def replicate_snaps(source_cli: ZfsCli, source_snaps: Collection[Snapshot], dest
   # get dest snaps
   dest_snaps = dest_cli.get_all_snapshots(dest_dataset, sort_by=ZfsProperty.CREATION, reverse=True)
   if not dest_snaps:
-    raise RuntimeError(f'Destination dataset does not contain any snapshots')
+    raise RuntimeError(f"Destination dataset '{dest_dataset}' does not contain any snapshots")
 
   # figure out base index
   base = next((i for i, s in enumerate(source_snaps) if s.guid == dest_snaps[0].guid), None)
   if base is None:
-    raise RuntimeError(f"Latest destination snapshot '{dest_snaps[0].shortname}' does not exist on source dataset")
+    raise RuntimeError(f"Latest snapshot '{dest_snaps[0].shortname}' at destination '{dest_dataset}' does not exist on source dataset '{source_dataset}'")
 
   # resolve hold tags
   source_tag = holdtag_src(dest_cli.get_dataset(dest_dataset))
@@ -66,10 +66,10 @@ def replicate_snaps(source_cli: ZfsCli, source_snaps: Collection[Snapshot], dest
   release_obsolete_holds((source_cli, dest_cli), (source_snaps, dest_snaps), (source_tag, dest_tag))
 
   if base == 0:
-    log.info(f'Source dataset does not have any new snapshots, nothing to do')
+    log.info(f"Source dataset '{source_dataset}' does not have any new snapshots, nothing to do")
     return
 
-  log.info(f'Transferring {base} snapshots')
+  log.info(f"Transferring {base} snapshots from '{source_dataset}' to '{dest_dataset}'")
   for i in range(base):
     send_receive_incremental(
       clis=(source_cli, dest_cli),
@@ -81,7 +81,7 @@ def replicate_snaps(source_cli: ZfsCli, source_snaps: Collection[Snapshot], dest
     )
     log.info(f'{i+1}/{base} transferred')
   dest_snaps = [s.with_dataset(dest_dataset) for s in source_snaps[:base]] + dest_snaps
-  log.info(f'Transfer completed')
+  log.info(f'Transfer complete')
 
 
 

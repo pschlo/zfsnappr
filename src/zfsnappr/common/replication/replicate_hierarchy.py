@@ -21,4 +21,11 @@ def replicate_hierarchy(
     rel_dataset = abs_source_dataset.removeprefix(source_dataset_root)
     abs_dest_dataset = dest_dataset_root + rel_dataset
 
-    replicate_snaps(source_cli, source_snaps, dest_cli, abs_dest_dataset, initialize=initialize)
+    replicate_snaps(
+      source_cli=source_cli,
+      source_snaps=source_snaps,
+      dest_cli=dest_cli,
+      dest_dataset=abs_dest_dataset,
+      source_dataset=abs_source_dataset,
+      initialize=initialize
+    )

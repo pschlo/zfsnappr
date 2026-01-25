@@ -10,4 +10,11 @@ def replicate(source_cli: ZfsCli, source_dataset: str, dest_cli: ZfsCli, dest_da
   if recursive:
     replicate_hierarchy(source_cli, source_dataset, source_snaps, dest_cli, dest_dataset, initialize=initialize)
   else:
-    replicate_snaps(source_cli, source_snaps, dest_cli, dest_dataset, initialize=initialize)
+    replicate_snaps(
+      source_cli=source_cli,
+      source_snaps=source_snaps,
+      dest_cli=dest_cli,
+      dest_dataset=dest_dataset,
+      source_dataset=source_dataset,
+      initialize=initialize
+    )
