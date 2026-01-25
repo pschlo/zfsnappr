@@ -144,7 +144,7 @@ def send_receive_incremental(
   if base:
     s = base.longname
     if unsafe_release or clis[0].has_hold(s, holdtags[0]):
-      clis[0].release([s], holdtags[0])
+      clis[0].release_hold([s], holdtags[0])
     s = base.with_dataset(dest_dataset).longname
     if unsafe_release or clis[1].has_hold(s, holdtags[1]):
-      clis[1].release([s], holdtags[1])
+      clis[1].release_hold([s], holdtags[1])

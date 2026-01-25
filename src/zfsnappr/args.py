@@ -10,6 +10,7 @@ from .commands import (
   pull as _pull,
   list as _list,
   tag as _tag,
+  unhold as _unhold,
   version as _version
 )
 
@@ -52,6 +53,9 @@ def get_args() -> Args:
     )
     _tag.args.setup(
         subparsers.add_parser('tag', parents=[common])
+    )
+    _unhold.args.setup(
+        subparsers.add_parser('unhold', parents=[common])
     )
     _version.args.setup(
         subparsers.add_parser('version')

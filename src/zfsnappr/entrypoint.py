@@ -14,6 +14,7 @@ from .commands import (
   pull as _pull,
   list as _list,
   tag as _tag,
+  unhold as _unhold,
   version as _version
 )
 
@@ -46,6 +47,8 @@ def _entrypoint():
             _list.entrypoint(cast(_list.Args, args))
         case 'tag':
             _tag.entrypoint(cast(_tag.Args, args))
+        case 'unhold':
+            _unhold.entrypoint(cast(_unhold.Args, args))
         case 'version':
             _version.entrypoint(cast(_version.Args, args))
         case _:

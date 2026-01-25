@@ -122,5 +122,5 @@ def release_obsolete_holds(clis: tuple[ZfsCli,ZfsCli], snaps: tuple[list[Snapsho
     log.info(f"Releasing {len(src_release)} obsolete holds in source")
   if dest_release:
     log.info(f"Releasing {len(dest_release)} obsolete holds in destination")
-  clis[0].release(src_release, holdtags[0])
-  clis[1].release(dest_release, holdtags[1])
+  clis[0].release_hold(src_release, holdtags[0])
+  clis[1].release_hold(dest_release, holdtags[1])

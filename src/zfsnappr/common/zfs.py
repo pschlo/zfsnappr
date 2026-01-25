@@ -143,7 +143,7 @@ class ZfsCli(ABC):
       return
     self._run_text_command(['zfs', 'hold', tag, *snapshots_fullnames])
 
-  def release(self, snapshots_fullnames: Collection[str], tag: str) -> None:
+  def release_hold(self, snapshots_fullnames: Collection[str], tag: str) -> None:
     if not snapshots_fullnames:
       return
     self._run_text_command(['zfs', 'release', tag, *snapshots_fullnames])
