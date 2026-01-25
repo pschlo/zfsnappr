@@ -15,11 +15,11 @@ log = logging.getLogger(__name__)
 def entrypoint(args: Args) -> None:
   source_cli, source_dataset = get_zfs_cli(args.dataset_spec)
   if source_dataset is None:
-    raise ValueError(f"No dataset provided")
+    raise ValueError(f"No dataset specified")
 
   dest_cli, dest_dataset = get_zfs_cli(args.dest)
   if dest_dataset is None:
-    raise ValueError(f"No dest dataset provided")
+    raise ValueError(f"No dest dataset specified")
 
   log.info(f'Pushing from source dataset "{source_dataset}" to dest dataset "{dest_dataset}"')
 

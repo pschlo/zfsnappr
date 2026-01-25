@@ -32,8 +32,10 @@ def entrypoint(args: Args):
     tags = frozenset(args.keep_tag)
   )
 
-  cli = LocalZfsCli()
   cli, dataset = get_zfs_cli(args.dataset_spec)
+  if dataset is None:
+    raise ValueError(f"No dataset specified")
+
   snapshots = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive, sort_by=ZfsProperty.CREATION)
   snapshots = filter.filter_snaps(snapshots, tag=filter.parse_tags(args.tag), shortname=filter.parse_shortnames(args.snapshot))
 

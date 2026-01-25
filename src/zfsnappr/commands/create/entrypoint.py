@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 def entrypoint(args: Args) -> None:
   cli, dataset = get_zfs_cli(args.dataset_spec)
   if dataset is None:
-    raise ValueError("Missing dataset name")
+    raise ValueError("No dataset specified")
   
   # generate random 10 digit alnum string
   #   10 digit alnum -> (26+26+10)^10 values = 839299365868340224 values = ca. 59.5 bit

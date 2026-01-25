@@ -15,6 +15,8 @@ TAG_SEPARATOR = "_"
 
 def entrypoint(args: Args) -> None:
   cli, dataset = get_zfs_cli(args.dataset_spec)
+  if dataset is None:
+    raise ValueError(f"No dataset specified")
 
   # --- determine operations ---
   operations: list[

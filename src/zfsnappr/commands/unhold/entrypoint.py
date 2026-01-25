@@ -15,6 +15,8 @@ log = logging.getLogger(__name__)
 
 def entrypoint(args: Args) -> None:
   cli, dataset = get_zfs_cli(args.dataset_spec)
+  if dataset is None:
+    raise ValueError(f"No dataset specified")
 
   snaps = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive, sort_by=ZfsProperty.CREATION)
   snaps = filter_snaps(snaps, shortname=args.snapshot)
