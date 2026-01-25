@@ -120,7 +120,6 @@ def send_receive_initial(
     holdtags=holdtags,
     properties={
       ZfsProperty.READONLY: 'on',
-      ZfsProperty.ATIME: 'off'
     },
   )
   
