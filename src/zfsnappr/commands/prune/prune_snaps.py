@@ -31,7 +31,7 @@ def prune_snapshots(
   if group_by is None:
     log.info(f'Pruning {len(snapshots)} snapshots without grouping')
     keep, destroy = apply_policy(snapshots, policy)
-    print_policy_result(keep, destroy, group=None)
+    print_policy_result(keep, destroy, group=None, group_by=None)
   else:
     log.info(f'Pruning {len(snapshots)} snapshots, grouped by {group_by.value}')
     # group the snapshots. Result is a dict with group name as key and set of snaps as value
@@ -42,7 +42,7 @@ def prune_snapshots(
       _keep, _destroy = apply_policy(_snaps, policy)
       keep += _keep
       destroy += _destroy
-      print_policy_result(_keep, _destroy, group=_group)
+      print_policy_result(_keep, _destroy, group=_group, group_by=group_by)
 
   if not keep and not allow_destroy_all:
     raise RuntimeError(f"Refusing to destroy all snapshots")
@@ -62,14 +62,23 @@ def prune_snapshots(
     log.info(f"    {i+1}/{len(destroy)} destroyed")
 
 
-def print_policy_result(keep: Collection[Snapshot], destroy: Collection[Snapshot], *, group: str | None = None):
+def print_policy_result(keep: Collection[Snapshot], destroy: Collection[Snapshot], *, group: str | None = None, group_by: GroupType | None = None):
+  assert bool(group) == bool(group_by)
+
+  # Determine prefix
+  if group is None or group_by is None:
+    prefix = ""
+  else:
+    prefix = f"{group_by.value.capitalize()} '{group}': "
+
+  # Print message
   if not destroy:
     log.info(
-      (f"Group {group}: " if group else "") + f'Keeping all {len(keep)} snapshots, not destroying any snapshots'
+      prefix + f'Keeping all {len(keep)} snapshots, not destroying any snapshots'
     )
   else:
     log.info(
-      (f"Group {group}: " if group else "") + f'Keeping {len(keep)} snapshots, destroying these {len(destroy)} snapshots:'
+      prefix + f'Keeping {len(keep)} snapshots, destroying these {len(destroy)} snapshots:'
     )
     for snap in destroy:
       log.info(f'    {snap.timestamp}  {snap.longname}')
