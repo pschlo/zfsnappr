@@ -36,11 +36,6 @@ def replicate_snaps(source_cli: ZfsCli, source_snaps: Collection[Snapshot], dest
 
   # ensure dest dataset exists
   dest_exists: bool = any(dest_dataset == d.name for d in dest_cli.get_all_datasets())
-  print("DEST_EXISTS", dest_exists)
-  print("all datasets:")
-  # print(dest_cli.get_all_datasets())
-  print(d.name for d in dest_cli.get_all_datasets())
-  print()
   if not dest_exists:
     if initialize:
       log.info(f"Creating destination dataset by transferring the oldest snapshot")
@@ -51,7 +46,8 @@ def replicate_snaps(source_cli: ZfsCli, source_snaps: Collection[Snapshot], dest
         holdtags=(holdtag_src, holdtag_dest)
       )
     else:
-      raise RuntimeError(f'Destination dataset does not exist and will not be created')
+      log.warning(f"Destination dataset '{dest_dataset}' does not exist and will not be created")
+      return
 
   # get dest snaps
   dest_snaps = dest_cli.get_all_snapshots(dest_dataset, sort_by=ZfsProperty.CREATION, reverse=True)
@@ -61,7 +57,7 @@ def replicate_snaps(source_cli: ZfsCli, source_snaps: Collection[Snapshot], dest
   # figure out base index
   base = next((i for i, s in enumerate(source_snaps) if s.guid == dest_snaps[0].guid), None)
   if base is None:
-    raise RuntimeError(f'Latest destination snapshot "{dest_snaps[0].shortname}" does not exist on source dataset')
+    raise RuntimeError(f"Latest destination snapshot '{dest_snaps[0].shortname}' does not exist on source dataset")
 
   # resolve hold tags
   source_tag = holdtag_src(dest_cli.get_dataset(dest_dataset))
