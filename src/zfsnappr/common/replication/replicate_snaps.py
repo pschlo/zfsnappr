@@ -5,6 +5,7 @@ import logging
 
 from ..zfs import Snapshot, ZfsCli, ZfsProperty, Dataset
 from .send_receive_snap import send_receive_incremental, send_receive_initial
+from zfsnappr.common.exception import ReplicationError
 
 
 log = logging.getLogger(__name__)
@@ -48,18 +49,17 @@ def replicate_snaps(source_cli: ZfsCli, source_snaps: Collection[Snapshot], dest
         holdtags=(holdtag_src, holdtag_dest)
       )
     else:
-      log.warning(f"Destination dataset '{dest_dataset}' does not exist and will not be created")
-      return
+      raise ReplicationError(f"Destination dataset '{dest_dataset}' does not exist and will not be created")
 
   # get dest snaps
   dest_snaps = dest_cli.get_all_snapshots(dest_dataset, sort_by=ZfsProperty.CREATION, reverse=True)
   if not dest_snaps:
-    raise RuntimeError(f"Destination dataset '{dest_dataset}' does not contain any snapshots")
+    raise ReplicationError(f"Destination dataset '{dest_dataset}' does not contain any snapshots")
 
   # figure out base index
   base = next((i for i, s in enumerate(source_snaps) if s.guid == dest_snaps[0].guid), None)
   if base is None:
-    raise RuntimeError(f"Latest snapshot '{dest_snaps[0].shortname}' at destination '{dest_dataset}' does not exist on source dataset '{source_dataset}'")
+    raise ReplicationError(f"Latest snapshot '{dest_snaps[0].shortname}' at destination '{dest_dataset}' does not exist on source dataset '{source_dataset}'")
 
   # resolve hold tags
   source_tag = holdtag_src(dest_cli.get_dataset(dest_dataset))

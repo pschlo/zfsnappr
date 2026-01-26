@@ -1,0 +1,4 @@
+
+
+class ReplicationError(Exception):
+    pass
