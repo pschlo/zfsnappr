@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 from typing import cast
+import sys
 import logging
 
 from .setup_logging import setup_logging
@@ -26,7 +27,7 @@ def cli():
         _entrypoint()
     except Exception as e:
         log.error(e)
-        # raise
+        sys.exit(1)
 
 
 def _entrypoint():

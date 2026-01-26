@@ -21,8 +21,7 @@ def entrypoint(args: Args) -> None:
   snaps = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive, sort_by=ZfsProperty.CREATION)
   snaps = filter_snaps(snaps, shortname=args.snapshot)
   if not snaps:
-    log.error(f"No matching snapshots")
-    return
+    raise ValueError(f"No matching snapshots")
 
   # get hold tags
   holds = cli.get_holds([s.longname for s in snaps])

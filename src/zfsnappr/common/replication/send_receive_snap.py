@@ -49,7 +49,7 @@ def _send_receive(
     send_proc.stdout.close()
 
     # 4) Start a thread to drain progress output
-    progress_thread = start_progress_thread(send_proc, lambda s: print(f"    {s}"))
+    progress_thread = start_progress_thread(send_proc, lambda s: log.info(f"    {s}"))
 
     # wait for both processes to terminate
     while True:
