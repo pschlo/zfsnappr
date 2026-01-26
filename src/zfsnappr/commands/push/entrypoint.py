@@ -1,10 +1,7 @@
 from __future__ import annotations
-from argparse import Namespace
-from typing import cast, Optional
 import logging
 
-from zfsnappr.common.zfs import LocalZfsCli, RemoteZfsCli
-from zfsnappr.common.replication import parse_remote, replicate
+from zfsnappr.common.replication import replicate
 from zfsnappr.common.utils import get_zfs_cli
 from .args import Args
 

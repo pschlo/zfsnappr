@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import cast, Optional, TYPE_CHECKING
 
-from zfsnappr.common.zfs import LocalZfsCli, Snapshot, ZfsProperty
+from zfsnappr.common.zfs import ZfsProperty
 from zfsnappr.common import filter
 from zfsnappr.common.utils import get_zfs_cli
 
