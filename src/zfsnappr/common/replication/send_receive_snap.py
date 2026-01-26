@@ -29,7 +29,7 @@ def _send_receive(
   snapshot: Snapshot,
   base: Optional[Snapshot],
   holdtags: tuple[Holdtag,Holdtag],
-  properties: dict[ZfsProperty, str] = {},
+  properties: dict[str, str] = {},
 ) -> None:
   src_cli, dest_cli = clis
   send_proc, recv_proc = None, None
@@ -113,7 +113,7 @@ def send_receive_initial(
   snapshot: Snapshot,
   holdtags: tuple[Callable[[Dataset], str], Callable[[Dataset], str]]
 ) -> None:
-  properties: dict[ZfsProperty, str] = {
+  properties: dict[str, str] = {
     ZfsProperty.READONLY: 'on'
   }
   if source_dataset_type == ZfsDatasetType.FILESYSTEM:

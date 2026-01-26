@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Optional, cast, Literal, Callable
 import logging
 
-from zfsnappr.common.zfs import Snapshot
+from zfsnappr.common.zfs import ZfsProperty, Snapshot
 from zfsnappr.common import filter
 from zfsnappr.common.utils import get_zfs_cli
 from .args import Args

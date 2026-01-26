@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from enum import StrEnum
 
 
-class ZfsProperty(StrEnum):
+class ZfsProperty:
   NAME = 'name'
   CREATION = 'creation'
   GUID = 'guid'
@@ -33,7 +33,7 @@ REQUIRED_PROPS = [ZfsProperty.NAME, ZfsProperty.CREATION, ZfsProperty.GUID, ZfsP
 
 
 class Snapshot:
-  properties: dict[ZfsProperty, str]
+  properties: dict[str, str]
 
   dataset: str
   shortname: str
@@ -42,7 +42,7 @@ class Snapshot:
   tags: Optional[set[str]]
   holds: int
 
-  def __init__(self, properties: dict[ZfsProperty, str]):
+  def __init__(self, properties: dict[str, str]):
     P = ZfsProperty
     ps = properties
 
@@ -126,7 +126,7 @@ class ZfsCli(ABC):
     cmd += [snapshot_fullname]
     return self._start_command(cmd, stdout=PIPE, stderr=PIPE)
 
-  def receive_snapshot_async(self, dataset: str, stdin: IO[bytes], properties: dict[ZfsProperty, str] = {}) -> Popen[bytes]:
+  def receive_snapshot_async(self, dataset: str, stdin: IO[bytes], properties: dict[str, str] = {}) -> Popen[bytes]:
     cmd = ['zfs', 'receive', '-u']
     for property, value in properties.items():
       cmd += ['-o', f'{property}={value}']
@@ -212,7 +212,7 @@ class ZfsCli(ABC):
     cmd = ['zfs', 'rename', fullname, new_shortname]
     self._run_text_command(cmd)
 
-  def get_snapshots(self, fullnames: Collection[str], properties: Collection[ZfsProperty] = []) -> list[Snapshot]:
+  def get_snapshots(self, fullnames: Collection[str], properties: Collection[str] = []) -> list[Snapshot]:
     if not fullnames:
       return []
     properties = list(dict.fromkeys(REQUIRED_PROPS + list(properties)))  # eliminate duplicates
@@ -229,7 +229,7 @@ class ZfsCli(ABC):
   def get_all_snapshots(self,
     dataset: Optional[str] = None,
     recursive: bool = False,
-    properties: Collection[ZfsProperty] = [],
+    properties: Collection[str] = [],
     sort_by: Optional[str] = None,
     reverse: bool = False
   ) -> list[Snapshot]:
