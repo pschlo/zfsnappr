@@ -24,6 +24,7 @@ def replicate_hierarchy(
   """
   is_error: bool = False
 
+  # TODO: Must ensure that parent dataset is created before children datasets; must not rely on implicit ordering of "zfs list" for this
   for abs_source_dataset, source_snaps in group_snaps_by(source_snaps, lambda s: s.dataset).items():
     assert abs_source_dataset.startswith(source_dataset_root)
     rel_dataset = abs_source_dataset.removeprefix(source_dataset_root)
