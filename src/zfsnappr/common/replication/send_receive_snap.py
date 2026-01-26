@@ -5,6 +5,7 @@ import threading
 import time
 
 from ..zfs import ZfsCli, Snapshot, ZfsProperty, Dataset, ZfsDatasetType
+from zfsnappr.common.exception import ReplicationError
 
 Holdtag = Union[str, Callable[[Dataset],str]]
 
@@ -87,7 +88,7 @@ def _send_receive(
     src_cli.hold([snapshot.longname], src_tag)
     dest_cli.hold([snapshot.with_dataset(dest_dataset).longname], dest_tag)
   
-  except BaseException:
+  except BaseException as e:
     log.info("Cleaning up")
     # On Ctrl+C or any exception, try to stop both sides.
     # terminate() is "graceful-ish"; if you need hard kill, follow with kill().
@@ -103,7 +104,9 @@ def _send_receive(
                     p.kill()
                 except Exception:
                     pass
-    raise
+    raise ReplicationError(
+      f"Replication of snapshot '{snapshot.shortname}' from '{snapshot.dataset}' to '{dest_dataset}' failed"
+    ) from e
 
 
 def send_receive_initial(
