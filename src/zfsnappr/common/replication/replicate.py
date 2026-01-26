@@ -23,7 +23,6 @@ def replicate(
       source_snaps=source_snaps,
       dest_cli=dest_cli,
       dest_dataset=dest_dataset,
-      source_dataset=source_dataset,
       initialize=initialize,
       rollback=rollback
     )

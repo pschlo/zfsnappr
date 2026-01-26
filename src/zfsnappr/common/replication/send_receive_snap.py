@@ -30,8 +30,7 @@ def _send_receive(
   snapshot: Snapshot,
   base: Optional[Snapshot],
   holdtags: tuple[Holdtag,Holdtag],
-  properties: dict[str, str] = {},
-  rollback: bool = False
+  properties: dict[str, str] = {}
 ) -> None:
   src_cli, dest_cli = clis
   send_proc, recv_proc = None, None
@@ -44,7 +43,7 @@ def _send_receive(
     assert send_proc.stderr is not None
 
     # 2) Start receiver, feeding it the sender's stdout
-    recv_proc = dest_cli.receive_snapshot_async(dest_dataset, send_proc.stdout, properties, rollback=rollback)
+    recv_proc = dest_cli.receive_snapshot_async(dest_dataset, send_proc.stdout, properties)
 
     # Parent no longer needs its copy of the pipe
     send_proc.stdout.close()
@@ -144,15 +143,13 @@ def send_receive_incremental(
   snapshot: Snapshot,
   base: Optional[Snapshot]=None,
   unsafe_release: bool=False,
-  rollback: bool=False
 ) -> None:
   _send_receive(
     clis=clis,
     dest_dataset=dest_dataset,
     snapshot=snapshot,
     base=base,
-    holdtags=holdtags,
-    rollback=rollback
+    holdtags=holdtags
   )
   # release base snaps
   if base:

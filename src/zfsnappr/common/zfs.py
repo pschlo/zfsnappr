@@ -126,10 +126,8 @@ class ZfsCli(ABC):
     cmd += [snapshot_fullname]
     return self._start_command(cmd, stdout=PIPE, stderr=PIPE)
 
-  def receive_snapshot_async(self, dataset: str, stdin: IO[bytes], properties: dict[str, str] = {}, rollback: bool = False) -> Popen[bytes]:
+  def receive_snapshot_async(self, dataset: str, stdin: IO[bytes], properties: dict[str, str] = {}) -> Popen[bytes]:
     cmd = ['zfs', 'receive', '-u']
-    if rollback:
-      cmd += ['-F']
     for property, value in properties.items():
       cmd += ['-o', f'{property}={value}']
     cmd += [dataset]
@@ -263,6 +261,10 @@ class ZfsCli(ABC):
       return
     shortnames_str = ','.join(snapshots_shortnames)
     self._run_text_command(['zfs', 'destroy', f'{dataset}@{shortnames_str}'])
+
+  def rollback(self, snap_fullname: str) -> None:
+    cmd = ['zfs', 'rollback', snap_fullname]
+    self._run_text_command(cmd)
 
 
 class LocalZfsCli(ZfsCli):

@@ -58,7 +58,7 @@ def prune_snapshots(
     try:
       cli.destroy_snapshots(snap.dataset, [snap.shortname])
     except CalledProcessError:
-      log.warning(f'Failed to destroy snapshot "{snap.longname}"')
+      log.warning(f"Failed to destroy snapshot '{snap.longname}'")
     log.info(f"    {i+1}/{len(destroy)} destroyed")
 
 

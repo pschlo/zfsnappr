@@ -36,7 +36,6 @@ def replicate_hierarchy(
         source_snaps=source_snaps,
         dest_cli=dest_cli,
         dest_dataset=abs_dest_dataset,
-        source_dataset=abs_source_dataset,
         initialize=initialize,
         rollback=rollback
       )

@@ -24,7 +24,6 @@ def replicate_snaps(
   source_snaps: Collection[Snapshot],
   dest_cli: ZfsCli,
   dest_dataset: str,
-  source_dataset: str,
   initialize: bool,
   rollback: bool
 ):
@@ -40,8 +39,13 @@ def replicate_snaps(
     log.info(f'No source snapshots given, nothing to do')
     return
 
+  source_dataset = next(iter(source_snaps)).dataset
+
   # sorting is required
   source_snaps = sorted(source_snaps, key=lambda s: s.timestamp, reverse=True)
+
+
+  ##### PHASE 1: Critical preparation, check for abort conditions
 
   # ensure dest dataset exists
   dest_exists: bool = any(dest_dataset == d.name for d in dest_cli.get_all_datasets())
@@ -69,15 +73,26 @@ def replicate_snaps(
   if base is None:
     raise ReplicationError(f"Latest snapshot '{dest_snaps[0].shortname}' at destination '{dest_dataset}' does not exist on source dataset '{source_dataset}'")
 
+
+  ##### PHASE 2: Everything technically good to go, do some quality-of-life checks before actual transfer
+
   # resolve hold tags
   source_tag = holdtag_src(dest_cli.get_dataset(dest_dataset))
-  dest_tag = holdtag_dest(source_cli.get_dataset(next(iter(source_snaps)).dataset))
+  dest_tag = holdtag_dest(source_cli.get_dataset(source_dataset))
 
   release_obsolete_holds((source_cli, dest_cli), (source_snaps, dest_snaps), (source_tag, dest_tag))
 
   if base == 0:
     log.info(f"Source dataset '{source_dataset}' does not have any new snapshots, nothing to do")
     return
+  
+  # Optionally ensure dest is at snapshot
+  if rollback:
+    log.info(f"Rolling back destination dataset '{dest_dataset}' to latest snapshot")
+    dest_cli.rollback(dest_snaps[0].longname)
+
+
+  ##### PHASE 3: Transfer snapshots sequentially
 
   log.info(f"Transferring {base} snapshots from '{source_dataset}' to '{dest_dataset}'")
   for i in range(base):
@@ -87,8 +102,7 @@ def replicate_snaps(
       holdtags=(source_tag, dest_tag),
       snapshot=source_snaps[base-i-1],
       base=source_snaps[base-i],
-      unsafe_release=(i > 0),
-      rollback=rollback
+      unsafe_release=(i > 0)
     )
     log.info(f'{i+1}/{base} transferred')
   dest_snaps = [s.with_dataset(dest_dataset) for s in source_snaps[:base]] + dest_snaps
