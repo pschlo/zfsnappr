@@ -31,6 +31,7 @@ def _send_receive(
   base: Optional[Snapshot],
   holdtags: tuple[Holdtag,Holdtag],
   properties: dict[str, str] = {},
+  rollback: bool = False
 ) -> None:
   src_cli, dest_cli = clis
   send_proc, recv_proc = None, None
@@ -43,7 +44,7 @@ def _send_receive(
     assert send_proc.stderr is not None
 
     # 2) Start receiver, feeding it the sender's stdout
-    recv_proc = dest_cli.receive_snapshot_async(dest_dataset, send_proc.stdout, properties)
+    recv_proc = dest_cli.receive_snapshot_async(dest_dataset, send_proc.stdout, properties, rollback=rollback)
 
     # Parent no longer needs its copy of the pipe
     send_proc.stdout.close()
@@ -116,14 +117,15 @@ def send_receive_initial(
   snapshot: Snapshot,
   holdtags: tuple[Callable[[Dataset], str], Callable[[Dataset], str]]
 ) -> None:
+  assert source_dataset_type in (ZfsDatasetType.FILESYSTEM, ZfsDatasetType.VOLUME)
   properties: dict[str, str] = {
     ZfsProperty.READONLY: 'on'
   }
   if source_dataset_type == ZfsDatasetType.FILESYSTEM:
     properties |= {
-       ZfsProperty.ATIME: 'off',
-       ZfsProperty.CANMOUNT: 'off',
-       ZfsProperty.MOUNTPOINT: 'none'
+      ZfsProperty.ATIME: 'off',
+      ZfsProperty.CANMOUNT: 'off',
+      ZfsProperty.MOUNTPOINT: 'none'
     }
   _send_receive(
     clis=clis,
@@ -141,14 +143,16 @@ def send_receive_incremental(
   holdtags: tuple[str,str],
   snapshot: Snapshot,
   base: Optional[Snapshot]=None,
-  unsafe_release: bool=False
+  unsafe_release: bool=False,
+  rollback: bool=False
 ) -> None:
   _send_receive(
     clis=clis,
     dest_dataset=dest_dataset,
     snapshot=snapshot,
     base=base,
-    holdtags=holdtags
+    holdtags=holdtags,
+    rollback=rollback
   )
   # release base snaps
   if base:

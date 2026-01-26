@@ -19,7 +19,15 @@ def holdtag_dest(src_dataset: Dataset):
 
 
 # TODO: raw send for encrypted datasets?
-def replicate_snaps(source_cli: ZfsCli, source_snaps: Collection[Snapshot], dest_cli: ZfsCli, dest_dataset: str, source_dataset: str, initialize: bool):
+def replicate_snaps(
+  source_cli: ZfsCli,
+  source_snaps: Collection[Snapshot],
+  dest_cli: ZfsCli,
+  dest_dataset: str,
+  source_dataset: str,
+  initialize: bool,
+  rollback: bool
+):
   """
   replicates source_snaps to dest_dataset
   all source_snaps must be of same dataset
@@ -79,7 +87,8 @@ def replicate_snaps(source_cli: ZfsCli, source_snaps: Collection[Snapshot], dest
       holdtags=(source_tag, dest_tag),
       snapshot=source_snaps[base-i-1],
       base=source_snaps[base-i],
-      unsafe_release=(i > 0)
+      unsafe_release=(i > 0),
+      rollback=rollback
     )
     log.info(f'{i+1}/{base} transferred')
   dest_snaps = [s.with_dataset(dest_dataset) for s in source_snaps[:base]] + dest_snaps

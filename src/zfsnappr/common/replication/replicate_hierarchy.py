@@ -14,7 +14,8 @@ log = logging.getLogger(__name__)
 def replicate_hierarchy(
     source_cli: ZfsCli, source_dataset_root: str, source_snaps: Collection[Snapshot],
     dest_cli: ZfsCli, dest_dataset_root: str,
-    initialize: bool
+    initialize: bool,
+    rollback: bool
 ):
   """
   replicates given snaps under dest_dataset
@@ -35,7 +36,8 @@ def replicate_hierarchy(
         dest_cli=dest_cli,
         dest_dataset=abs_dest_dataset,
         source_dataset=abs_source_dataset,
-        initialize=initialize
+        initialize=initialize,
+        rollback=rollback
       )
     except ReplicationError as e:
       is_error = True

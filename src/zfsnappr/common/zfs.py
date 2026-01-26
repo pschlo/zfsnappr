@@ -126,8 +126,10 @@ class ZfsCli(ABC):
     cmd += [snapshot_fullname]
     return self._start_command(cmd, stdout=PIPE, stderr=PIPE)
 
-  def receive_snapshot_async(self, dataset: str, stdin: IO[bytes], properties: dict[str, str] = {}) -> Popen[bytes]:
+  def receive_snapshot_async(self, dataset: str, stdin: IO[bytes], properties: dict[str, str] = {}, rollback: bool = False) -> Popen[bytes]:
     cmd = ['zfs', 'receive', '-u']
+    if rollback:
+      cmd += ['-F']
     for property, value in properties.items():
       cmd += ['-o', f'{property}={value}']
     cmd += [dataset]

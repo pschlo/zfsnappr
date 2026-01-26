@@ -26,5 +26,6 @@ def entrypoint(args: Args) -> None:
     dest_cli=dest_cli,
     dest_dataset=dest_dataset,
     recursive=args.recursive,
-    initialize=args.init
+    initialize=args.init,
+    rollback=args.rollback
   )
