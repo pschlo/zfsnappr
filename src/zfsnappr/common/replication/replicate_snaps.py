@@ -71,17 +71,26 @@ def replicate_snaps(
   source_tag = holdtag_src(dest_cli.get_dataset(dest_dataset))
   dest_tag = holdtag_dest(source_cli.get_dataset(source_dataset))
 
-  # Clean up obsolete holds
-  ensure_holds((source_cli, dest_cli), (source_snaps, dest_snaps), (source_tag, dest_tag))
+  # Determine latest common snapshot
+  latest_common_snap = determine_latest_common((source_snaps, dest_snaps))
+
+  # Update holds
+  ensure_holds(
+    (source_cli, dest_cli),
+    (source_snaps, dest_snaps),
+    (source_tag, dest_tag),
+    latest_common_snap=latest_common_snap
+  )
 
   if not dest_snaps:
     raise ReplicationError(f"Destination dataset '{dest_dataset}' does not contain any snapshots")
 
   # figure out base index
-  base = next((i for i, s in enumerate(source_snaps) if s.guid == dest_snaps[0].guid), None)
-  if base is None:
-    raise ReplicationError(f"Latest snapshot '{dest_snaps[0].shortname}' at destination '{dest_dataset}' does not exist on source dataset '{source_dataset}'")
-
+  if latest_common_snap is None:
+    raise ReplicationError(f"Source and destination have no common snapshot")
+  if latest_common_snap[1].guid != dest_snaps[0].guid:
+    raise ReplicationError(f"Destination has snapshots newer than latest common snapshot '{latest_common_snap[0].shortname}'")
+  base = next(i for i, s in enumerate(source_snaps) if s.guid == latest_common_snap[0].guid)
 
   ##### PHASE 2: Everything technically good to go, do some quality-of-life checks before actual transfer
 
@@ -98,23 +107,22 @@ def replicate_snaps(
   ##### PHASE 3: Transfer snapshots sequentially
 
   log.info(f"Transferring {base} snapshots from '{source_dataset}' to '{dest_dataset}'")
-  for i in range(base):
+  for i, (_base, _snap) in enumerate(pairwise(reversed(source_snaps[:base+1]))):
     send_receive_incremental(
       clis=(source_cli, dest_cli),
       dest_dataset=dest_dataset,
       holdtags=(source_tag, dest_tag),
-      snapshot=source_snaps[base-i-1],
-      base=source_snaps[base-i],
-      unsafe_release=(i > 0)
+      snapshot=_snap,
+      base=_base,
+      unsafe_release=True  # base is guaranteed to be held
     )
     log.info(f'{i+1}/{base} transferred')
   dest_snaps = [s.with_dataset(dest_dataset) for s in source_snaps[:base]] + dest_snaps
   log.info(f'Transfer complete')
 
 
-
-def ensure_holds(clis: tuple[ZfsCli,ZfsCli], snaps: tuple[list[Snapshot],list[Snapshot]], holdtags: tuple[str,str]):
-  """Find the latest snapshot that exists on both sides and ensure it is held. Remove all other peer holdtags.
+def ensure_holds(clis: tuple[ZfsCli,ZfsCli], snaps: tuple[list[Snapshot],list[Snapshot]], holdtags: tuple[str,str], latest_common_snap: tuple[Snapshot, Snapshot] | None):
+  """Ensures the latest common snapshot is held on both sides. Removes all other peer holdtags.
 
   After completion, one of these is true:
   1. There are no holdtags on either side, since there was no common snapshot
@@ -130,24 +138,14 @@ def ensure_holds(clis: tuple[ZfsCli,ZfsCli], snaps: tuple[list[Snapshot],list[Sn
   for h in clis[1].get_holds([s.longname for s in snaps[1]]):
     holds[1][h.snap_longname].add(h.tag)
 
-  # Find latest common snapshot.
-  guid_to_snap = (
-    {s.guid: s for s in snaps[0]},
-    {s.guid: s for s in snaps[1]}
-  )
-  common_guids = guid_to_snap[0].keys() & guid_to_snap[1].keys()
-  if not common_guids:
-    # Release all peer holds.
+  if latest_common_snap is None:
+    # Remove all peer holdtags
     release_snaps = (
       [s.longname for s in snaps[0]],
       [s.longname for s in snaps[1]]
     )
     _release_holds(clis, release_snaps, holdtags, current_holdtags=holds)
     return
-  # For determinism, sort by GUID if timestamps are equal
-  latest_guid = max(common_guids, key=lambda g: (guid_to_snap[0][g].timestamp, g))
-  latest_common_snap = (guid_to_snap[0][latest_guid], guid_to_snap[1][latest_guid])
-  log.info(f"Latest common snapshot is {latest_common_snap[0].longname} on source, {latest_common_snap[1].longname} on destination")
 
   # Ensure latest common snap is held
   if holdtags[0] not in holds[0][latest_common_snap[0].longname]:
@@ -161,6 +159,28 @@ def ensure_holds(clis: tuple[ZfsCli,ZfsCli], snaps: tuple[list[Snapshot],list[Sn
     [s.longname for s in snaps[1] if s.guid != latest_common_snap[1].guid]
   )
   _release_holds(clis, release_snaps, holdtags, current_holdtags=holds)
+
+
+def determine_latest_common(snaps: tuple[list[Snapshot],list[Snapshot]]) -> tuple[Snapshot, Snapshot] | None:
+  """Finds the latest snapshot that exists on both sides."""
+  guid_to_snap = (
+    {s.guid: s for s in snaps[0]},
+    {s.guid: s for s in snaps[1]}
+  )
+  common_guids = guid_to_snap[0].keys() & guid_to_snap[1].keys()
+  if not common_guids:
+    return None
+
+  # For determinism, sort by GUID if timestamps are equal.
+  # Just to be safe, ensure the snapshot is actually the latest common snapshot on both sides.
+  _latest_guid_src = max(common_guids, key=lambda g: (guid_to_snap[0][g].timestamp, g))
+  _latest_guid_dest = max(common_guids, key=lambda g: (guid_to_snap[1][g].timestamp, g))
+  assert _latest_guid_src == _latest_guid_dest
+  latest_guid = _latest_guid_src
+  latest_common_snap = (guid_to_snap[0][latest_guid], guid_to_snap[1][latest_guid])
+  log.info(f"Latest common snapshot is '{latest_common_snap[0].longname}' on source, '{latest_common_snap[1].longname}' on destination")
+
+  return latest_common_snap
 
 
 def _release_holds(clis: tuple[ZfsCli, ZfsCli], snaps: tuple[list[str], list[str]], release_holdtags: tuple[str, str], current_holdtags: tuple[dict[str, set[str]], dict[str, set[str]]]):
