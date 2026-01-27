@@ -43,7 +43,7 @@ def replicate_snaps(
   source_dataset = next(iter(source_snaps)).dataset
 
   # sorting is required
-  source_snaps = sorted(source_snaps, key=lambda s: s.timestamp, reverse=True)
+  source_snaps = sorted(source_snaps, key=lambda s: (s.timestamp, s.guid), reverse=True)
 
 
   ##### PHASE 1: Critical preparation, check for abort conditions

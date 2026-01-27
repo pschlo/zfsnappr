@@ -109,7 +109,7 @@ Keeps snapshot ordering intact
 """
 def apply_policy(snapshots: Collection[Snapshot], policy: KeepPolicy) -> tuple[list[Snapshot], list[Snapshot]]:
   # all snapshots, sorted from latest to oldest. Sorting is important for the algorithm to work correctly.
-  snaps = sorted(snapshots, key=lambda x: x.timestamp, reverse=True)
+  snaps = sorted(snapshots, key=lambda s: (s.timestamp, s.guid), reverse=True)
   keep: set[Snapshot] = set()
   destroy: set[Snapshot] = set()
   
