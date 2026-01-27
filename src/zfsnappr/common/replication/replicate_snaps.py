@@ -79,17 +79,18 @@ def replicate_snaps(
     (source_cli, dest_cli),
     (source_snaps, dest_snaps),
     (source_tag, dest_tag),
+    datasets=(source_dataset, dest_dataset),
     latest_common_snap=latest_common_snap
   )
 
   if not dest_snaps:
-    raise ReplicationError(f"Destination dataset '{dest_dataset}' does not contain any snapshots")
+    raise ReplicationError(f"Destination '{dest_dataset}' does not contain any snapshots")
 
   # figure out base index
   if latest_common_snap is None:
-    raise ReplicationError(f"Source and destination have no common snapshot")
+    raise ReplicationError(f"Source '{source_dataset}' and destination '{dest_dataset}' have no common snapshot")
   if latest_common_snap[1].guid != dest_snaps[0].guid:
-    raise ReplicationError(f"Destination has snapshots newer than latest common snapshot '{latest_common_snap[1].shortname}'")
+    raise ReplicationError(f"Destination '{dest_dataset}' has snapshots newer than latest common snapshot '{latest_common_snap[1].shortname}'")
   base_index = next(i for i, s in enumerate(source_snaps) if s.guid == latest_common_snap[0].guid)
 
   # Determine sequence of source snapshots to transfer.
@@ -98,16 +99,16 @@ def replicate_snaps(
 
   assert transfer_sequence  # must at least contain a base snapshot
   if len(transfer_sequence) <= 1:
-    log.info(f"Source dataset '{source_dataset}' has no new snapshots to transfer")
+    log.info(f"Source '{source_dataset}' has no new snapshots to transfer")
     return
 
   # Find snapshots that cannot be transferred because their timestamp equals their predecessor
   for i, (a, b) in enumerate(pairwise(transfer_sequence)):
     if a.timestamp == b.timestamp:
       # Snapshot B cannot be sent
-      log.warning(f"Snapshot '{b.shortname}' cannot be transferred because it has the same timestamp as its predecessor snapshot '{a.shortname}'")
+      log.warning(f"Snapshot '{b.shortname}' on source '{source_dataset}' cannot be transferred because it has the same timestamp as its predecessor snapshot '{a.shortname}'")
       if i == 0:
-        raise ReplicationError(f"Cannot send any snapshots")
+        raise ReplicationError(f"Cannot send any snapshots from source '{source_dataset}' to destination '{dest_dataset}'")
       else:
         log.warning(f"Only transferring {i} out of {len(transfer_sequence)-1} snapshots")
         transfer_sequence = transfer_sequence[:i+1]
@@ -120,7 +121,7 @@ def replicate_snaps(
   
   # Optionally ensure dest is at snapshot
   if rollback:
-    log.info(f"Rolling back destination dataset '{dest_dataset}' to latest snapshot")
+    log.info(f"Rolling back destination '{dest_dataset}' to latest snapshot")
     dest_cli.rollback(dest_snaps[0].longname)
 
 
@@ -142,7 +143,7 @@ def replicate_snaps(
   log.info(f'Transfer complete')
 
 
-def ensure_holds(clis: tuple[ZfsCli,ZfsCli], snaps: tuple[list[Snapshot],list[Snapshot]], holdtags: tuple[str,str], latest_common_snap: tuple[Snapshot, Snapshot] | None):
+def ensure_holds(clis: tuple[ZfsCli,ZfsCli], snaps: tuple[list[Snapshot],list[Snapshot]], holdtags: tuple[str,str], latest_common_snap: tuple[Snapshot, Snapshot] | None, datasets: tuple[str, str]):
   """Ensures the latest common snapshot is held on both sides. Removes all other peer holdtags.
 
   After completion, one of these is true:
@@ -165,16 +166,16 @@ def ensure_holds(clis: tuple[ZfsCli,ZfsCli], snaps: tuple[list[Snapshot],list[Sn
       [s.longname for s in snaps[0]],
       [s.longname for s in snaps[1]]
     )
-    _release_holds(clis, release_snaps, holdtags, current_holdtags=holds)
+    _release_holds(clis, release_snaps, holdtags, current_holdtags=holds, datasets=datasets)
     return
 
   # Ensure latest common snap is held
   src_snap, dest_snap = latest_common_snap
   if holdtags[0] not in holds[0][src_snap.longname]:
-    log.info(f"Creating hold for latest common snapshot '{src_snap.shortname}' at source")
+    log.info(f"Creating hold for latest common snapshot '{src_snap.shortname}' at source '{src_snap.dataset}'")
     clis[0].hold([src_snap.longname], tag=holdtags[0])
   if holdtags[1] not in holds[1][dest_snap.longname]:
-    log.info(f"Creating hold for latest common snapshot '{dest_snap.shortname}' at destination")
+    log.info(f"Creating hold for latest common snapshot '{dest_snap.shortname}' at destination '{dest_snap.dataset}'")
     clis[1].hold([dest_snap.longname], tag=holdtags[1])
 
   # Remove all other holdtags
@@ -182,7 +183,7 @@ def ensure_holds(clis: tuple[ZfsCli,ZfsCli], snaps: tuple[list[Snapshot],list[Sn
     [s.longname for s in snaps[0] if s.guid != latest_common_snap[0].guid],
     [s.longname for s in snaps[1] if s.guid != latest_common_snap[1].guid]
   )
-  _release_holds(clis, release_snaps, holdtags, current_holdtags=holds)
+  _release_holds(clis, release_snaps, holdtags, current_holdtags=holds, datasets=datasets)
 
 
 def determine_latest_common(snaps: tuple[list[Snapshot],list[Snapshot]]) -> tuple[Snapshot, Snapshot] | None:
@@ -207,15 +208,15 @@ def determine_latest_common(snaps: tuple[list[Snapshot],list[Snapshot]]) -> tupl
   return latest_common_snap
 
 
-def _release_holds(clis: tuple[ZfsCli, ZfsCli], snaps: tuple[list[str], list[str]], release_holdtags: tuple[str, str], current_holdtags: tuple[dict[str, set[str]], dict[str, set[str]]]):
+def _release_holds(clis: tuple[ZfsCli, ZfsCli], snaps: tuple[list[str], list[str]], release_holdtags: tuple[str, str], current_holdtags: tuple[dict[str, set[str]], dict[str, set[str]]], datasets: tuple[str, str]):
   # Filter for snaps that have the holdtags
   release_snaps = (
     [s for s in snaps[0] if release_holdtags[0] in current_holdtags[0][s]],
     [s for s in snaps[1] if release_holdtags[1] in current_holdtags[1][s]],
   )
   if release_snaps[0]:
-    log.info(f"Releasing {len(release_snaps[0])} obsolete holds in source")
+    log.info(f"Releasing {len(release_snaps[0])} obsolete holds in source '{datasets[0]}'")
   if release_snaps[1]:
-    log.info(f"Releasing {len(release_snaps[1])} obsolete holds in destination")
+    log.info(f"Releasing {len(release_snaps[1])} obsolete holds in destination '{datasets[1]}'")
   clis[0].release_hold(release_snaps[0], release_holdtags[0])
   clis[1].release_hold(release_snaps[1], release_holdtags[1])
