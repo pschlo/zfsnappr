@@ -18,8 +18,9 @@ def entrypoint(args: Args) -> None:
   if dataset is None:
     raise ValueError(f"No dataset specified")
 
-  _all_snaps = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive, sort_by=ZfsProperty.CREATION)
-  snaps = filter_snaps(_all_snaps, shortname=args.snapshot)
+  snaps = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive)
+  snaps = filter_snaps(snaps, shortname=args.snapshot)
+  snaps = sorted(snaps, key=lambda s: (s.timestamp, s.guid))
   if not snaps:
     log.info(f"No matching snapshots, nothing to do")
 

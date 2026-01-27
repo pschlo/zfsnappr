@@ -14,7 +14,8 @@ def replicate(
   initialize: bool=False,
   rollback: bool=False
 ):
-  source_snaps = source_cli.get_all_snapshots(source_dataset, recursive=recursive, sort_by=ZfsProperty.CREATION, reverse=True)
+  source_snaps = source_cli.get_all_snapshots(source_dataset, recursive=recursive)
+  source_snaps = sorted(source_snaps, key=lambda s: (s.timestamp, s.guid), reverse=True)
   if recursive:
     replicate_hierarchy(source_cli, source_dataset, source_snaps, dest_cli, dest_dataset, initialize=initialize, rollback=rollback)
   else:

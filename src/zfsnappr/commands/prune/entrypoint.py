@@ -40,9 +40,10 @@ def entrypoint(args: Args):
   if dataset is None:
     raise ValueError(f"No dataset specified")
 
-  _all_snaps = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive, sort_by=ZfsProperty.CREATION)
-  snapshots = filter.filter_snaps(_all_snaps, tag=filter.parse_tags(args.tag), shortname=filter.parse_shortnames(args.snapshot))
-  if not snapshots:
+  snaps = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive)
+  snaps = filter.filter_snaps(snaps, tag=filter.parse_tags(args.tag), shortname=filter.parse_shortnames(args.snapshot))
+  snaps = sorted(snaps, key=lambda s: (s.timestamp, s.guid))
+  if not snaps:
     log.info(f'No matching snapshots, nothing to do')
     return
 
@@ -53,7 +54,7 @@ def entrypoint(args: Args):
 
   prune_snapshots(
     cli,
-    snapshots,
+    snaps,
     policy,
     dry_run=args.dry_run,
     group_by=get_grouptype[args.group_by],

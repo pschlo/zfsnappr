@@ -65,7 +65,8 @@ def replicate_snaps(
       raise ReplicationError(f"Destination dataset '{dest_dataset}' does not exist and will not be created")
 
   # get dest snaps
-  dest_snaps = dest_cli.get_all_snapshots(dest_dataset, sort_by=ZfsProperty.CREATION, reverse=True)
+  dest_snaps = dest_cli.get_all_snapshots(dest_dataset)
+  dest_snaps = sorted(dest_snaps, key=lambda s: (s.timestamp, s.guid), reverse=True)
   
   # resolve hold tags
   source_tag = holdtag_src(dest_cli.get_dataset(dest_dataset))

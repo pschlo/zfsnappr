@@ -230,16 +230,12 @@ class ZfsCli(ABC):
     dataset: Optional[str] = None,
     recursive: bool = False,
     properties: Collection[str] = [],
-    sort_by: Optional[str] = None,
-    reverse: bool = False
   ) -> list[Snapshot]:
     properties = list(dict.fromkeys(REQUIRED_PROPS + list(properties)))  # eliminate duplicates
 
     cmd = ['zfs', 'list', '-Hp', '-t', 'snapshot', '-o', ','.join(properties)]
     if recursive:
       cmd += ['-r']
-    if sort_by is not None:
-      cmd += ['-s' if not reverse else '-S', sort_by]
     if dataset:
       cmd += [dataset]
     lines = self._run_text_command(cmd).splitlines()

@@ -24,8 +24,9 @@ class Field:
 def entrypoint(args: Args) -> None:
   cli, dataset = get_zfs_cli(args.dataset_spec)
 
-  snaps = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive, sort_by=ZfsProperty.CREATION)
+  snaps = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive)
   snaps = filter_snaps(snaps, tag=parse_tags(args.tag))
+  snaps = sorted(snaps, key=lambda s: (s.timestamp, s.guid))
 
   # get hold tags for all snapshots with holds
   holdtags: dict[str, set[str]] = {s.longname: set() for s in snaps}
