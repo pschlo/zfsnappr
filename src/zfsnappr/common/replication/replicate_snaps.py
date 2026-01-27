@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Optional, cast
 from collections.abc import Collection
 import logging
+from itertools import pairwise
 
 from ..zfs import Snapshot, ZfsCli, ZfsProperty, Dataset
 from .send_receive_snap import send_receive_incremental, send_receive_initial
@@ -65,6 +66,14 @@ def replicate_snaps(
 
   # get dest snaps
   dest_snaps = dest_cli.get_all_snapshots(dest_dataset, sort_by=ZfsProperty.CREATION, reverse=True)
+  
+  # resolve hold tags
+  source_tag = holdtag_src(dest_cli.get_dataset(dest_dataset))
+  dest_tag = holdtag_dest(source_cli.get_dataset(source_dataset))
+
+  # Clean up obsolete holds
+  ensure_holds((source_cli, dest_cli), (source_snaps, dest_snaps), (source_tag, dest_tag))
+
   if not dest_snaps:
     raise ReplicationError(f"Destination dataset '{dest_dataset}' does not contain any snapshots")
 
@@ -75,12 +84,6 @@ def replicate_snaps(
 
 
   ##### PHASE 2: Everything technically good to go, do some quality-of-life checks before actual transfer
-
-  # resolve hold tags
-  source_tag = holdtag_src(dest_cli.get_dataset(dest_dataset))
-  dest_tag = holdtag_dest(source_cli.get_dataset(source_dataset))
-
-  release_obsolete_holds((source_cli, dest_cli), (source_snaps, dest_snaps), (source_tag, dest_tag))
 
   if base == 0:
     log.info(f"Source dataset '{source_dataset}' does not have any new snapshots, nothing to do")
@@ -110,43 +113,65 @@ def replicate_snaps(
 
 
 
-def release_obsolete_holds(clis: tuple[ZfsCli,ZfsCli], snaps: tuple[list[Snapshot],list[Snapshot]], holdtags: tuple[str,str]):
-  """Finds the latest snapshot that exists on both sides and is held on both sides.
-  Remove holds from any older snaps."""
-  # find common snaps
-  common_guids = {s.guid for s in snaps[0]} & {s.guid for s in snaps[1]}
-  src_common_snaps = [(s,i) for i,s in enumerate(snaps[0]) if s.guid in common_guids]
-  dest_common_snaps = [(s,i) for i,s in enumerate(snaps[1]) if s.guid in common_guids]
+def ensure_holds(clis: tuple[ZfsCli,ZfsCli], snaps: tuple[list[Snapshot],list[Snapshot]], holdtags: tuple[str,str]):
+  """Find the latest snapshot that exists on both sides and ensure it is held. Remove all other peer holdtags.
 
-  # get source holds
-  src_holds = {s.longname: set() for s in snaps[0]}
+  After completion, one of these is true:
+  1. There are no holdtags on either side, since there was no common snapshot
+  2. There is exactly one holdtag on each side, on the latest common snapshot
+  """
+  # Get holds
+  holds = (
+    {s.longname: set[str]() for s in snaps[0]},
+    {s.longname: set[str]() for s in snaps[1]}
+  )
   for h in clis[0].get_holds([s.longname for s in snaps[0]]):
-    src_holds[h.snap_longname].add(h.tag)
-
-  # get dest holds
-  dest_holds = {s.longname: set() for s in snaps[1]}
+    holds[0][h.snap_longname].add(h.tag)
   for h in clis[1].get_holds([s.longname for s in snaps[1]]):
-    dest_holds[h.snap_longname].add(h.tag)
+    holds[1][h.snap_longname].add(h.tag)
 
-  # find index in source and dest of latest common snap with holdtags
-  for i in range(len(common_guids)):
-    src_snap, src_index = src_common_snaps[i]
-    dest_snap, dest_index = dest_common_snaps[i]
-    if holdtags[0] in src_holds[src_snap.longname] and holdtags[1] in dest_holds[dest_snap.longname]:
-      newest_common_snap = (src_index, dest_index)
-      break
-  else:
-    # no commonly held snap
-    newest_common_snap = (-1, -1)
-  
-  log.debug(f"Newest common snap is at indices {newest_common_snap}")
-  
-  # remove holdtag from all older snaps
-  src_release = [s.longname for s in snaps[0][newest_common_snap[0]+1:] if holdtags[0] in src_holds[s.longname]]
-  dest_release = [s.longname for s in snaps[1][newest_common_snap[1]+1:] if holdtags[1] in dest_holds[s.longname]]
-  if src_release:
-    log.info(f"Releasing {len(src_release)} obsolete holds in source")
-  if dest_release:
-    log.info(f"Releasing {len(dest_release)} obsolete holds in destination")
-  clis[0].release_hold(src_release, holdtags[0])
-  clis[1].release_hold(dest_release, holdtags[1])
+  # Find latest common snapshot.
+  guid_to_snap = (
+    {s.guid: s for s in snaps[0]},
+    {s.guid: s for s in snaps[1]}
+  )
+  common_guids = guid_to_snap[0].keys() & guid_to_snap[1].keys()
+  if not common_guids:
+    # Release all peer holds.
+    release_snaps = (
+      [s.longname for s in snaps[0]],
+      [s.longname for s in snaps[1]]
+    )
+    _release_holds(clis, release_snaps, holdtags, current_holdtags=holds)
+    return
+  # For determinism, sort by GUID if timestamps are equal
+  latest_guid = max(common_guids, key=lambda g: (guid_to_snap[0][g].timestamp, g))
+  latest_common_snap = (guid_to_snap[0][latest_guid], guid_to_snap[1][latest_guid])
+  log.info(f"Latest common snapshot is {latest_common_snap[0].longname} on source, {latest_common_snap[1].longname} on destination")
+
+  # Ensure latest common snap is held
+  if holdtags[0] not in holds[0][latest_common_snap[0].longname]:
+    clis[0].hold([latest_common_snap[0].longname], tag=holdtags[0])
+  if holdtags[1] not in holds[1][latest_common_snap[1].longname]:
+    clis[1].hold([latest_common_snap[1].longname], tag=holdtags[1])
+
+  # Remove all other holdtags
+  release_snaps = (
+    [s.longname for s in snaps[0] if s.guid != latest_common_snap[0].guid],
+    [s.longname for s in snaps[1] if s.guid != latest_common_snap[1].guid]
+  )
+  _release_holds(clis, release_snaps, holdtags, current_holdtags=holds)
+
+
+def _release_holds(clis: tuple[ZfsCli, ZfsCli], snaps: tuple[list[str], list[str]], release_holdtags: tuple[str, str], current_holdtags: tuple[dict[str, set[str]], dict[str, set[str]]]):
+  # Filter for snaps that have the holdtags
+  release_snaps = (
+    [s for s in snaps[0] if release_holdtags[0] in current_holdtags[0][s]],
+    [s for s in snaps[1] if release_holdtags[1] in current_holdtags[1][s]],
+  )
+  if release_snaps[0]:
+    log.info(f"Releasing {len(release_snaps[0])} obsolete holds in source")
+  if release_snaps[1]:
+    log.info(f"Releasing {len(release_snaps[1])} obsolete holds in destination")
+  clis[0].release_hold(release_snaps[0], release_holdtags[0])
+  clis[1].release_hold(release_snaps[1], release_holdtags[1])
