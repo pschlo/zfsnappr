@@ -98,14 +98,14 @@ def replicate_snaps(
 
   assert transfer_sequence  # must at least contain a base snapshot
   if len(transfer_sequence) <= 1:
-    log.info(f"Source dataset '{source_dataset}' does not have new snapshots to transfer")
+    log.info(f"Source dataset '{source_dataset}' has no new snapshots to transfer")
     return
 
   # Find snapshots that cannot be transferred because their timestamp equals their predecessor
   for i, (a, b) in enumerate(pairwise(transfer_sequence)):
     if a.timestamp == b.timestamp:
       # Snapshot B cannot be sent
-      log.warning(f"Snapshot '{b.shortname}' cannot be transferred because it has the same timestamp as its predecessor")
+      log.warning(f"Snapshot '{b.shortname}' cannot be transferred because it has the same timestamp as its predecessor snapshot '{a.shortname}'")
       if i == 0:
         raise ReplicationError(f"Cannot send any snapshots")
       else:
