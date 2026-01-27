@@ -24,10 +24,6 @@ def prune_snapshots(
   """
   Prune given snapshots according to keep policy
   """
-  if not snapshots:
-    log.info(f'No snapshots, nothing to do')
-    return
-
   if group_by is None:
     log.info(f'Pruning {len(snapshots)} snapshots without grouping')
     keep, destroy = apply_policy(snapshots, policy)

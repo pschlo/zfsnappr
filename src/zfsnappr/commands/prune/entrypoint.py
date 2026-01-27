@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import cast, Optional, TYPE_CHECKING
+import logging
 
 from zfsnappr.common.zfs import ZfsProperty
 from zfsnappr.common import filter
@@ -10,6 +11,9 @@ from .prune_snaps import prune_snapshots
 from .grouping import GroupType
 if TYPE_CHECKING:
   from .args import Args
+
+
+log = logging.getLogger(__name__)
 
 
 def entrypoint(args: Args):
@@ -36,8 +40,11 @@ def entrypoint(args: Args):
   if dataset is None:
     raise ValueError(f"No dataset specified")
 
-  snapshots = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive, sort_by=ZfsProperty.CREATION)
-  snapshots = filter.filter_snaps(snapshots, tag=filter.parse_tags(args.tag), shortname=filter.parse_shortnames(args.snapshot))
+  _all_snaps = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive, sort_by=ZfsProperty.CREATION)
+  snapshots = filter.filter_snaps(_all_snaps, tag=filter.parse_tags(args.tag), shortname=filter.parse_shortnames(args.snapshot))
+  if not snapshots:
+    log.info(f'No matching snapshots, nothing to do')
+    return
 
   get_grouptype: dict[str, Optional[GroupType]] = {
     'dataset': GroupType.DATASET,

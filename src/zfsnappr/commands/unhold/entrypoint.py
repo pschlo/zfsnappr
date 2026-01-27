@@ -18,16 +18,18 @@ def entrypoint(args: Args) -> None:
   if dataset is None:
     raise ValueError(f"No dataset specified")
 
-  snaps = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive, sort_by=ZfsProperty.CREATION)
-  snaps = filter_snaps(snaps, shortname=args.snapshot)
+  _all_snaps = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive, sort_by=ZfsProperty.CREATION)
+  snaps = filter_snaps(_all_snaps, shortname=args.snapshot)
   if not snaps:
-    raise ValueError(f"No matching snapshots")
+    log.info(f"No matching snapshots, nothing to do")
 
   # get hold tags
-  holds = cli.get_holds([s.longname for s in snaps])
+  _all_holds = cli.get_holds([s.longname for s in snaps])
+  release_holds = [h for h in _all_holds if h.tag.startswith('zfsnappr')]
+  if not release_holds:
+    log.info(f"Snapshots have no releasable holds")
 
   # Release all zfsnappr holds
-  for hold in holds:
-    if hold.tag.startswith('zfsnappr'):
-      log.info(f"Releasing hold '{hold.tag}' on snapshot {hold.snap_longname}")
-      cli.release_hold([hold.snap_longname], tag=hold.tag)
+  for hold in release_holds:
+    log.info(f"Releasing hold '{hold.tag}' on snapshot {hold.snap_longname}")
+    cli.release_hold([hold.snap_longname], tag=hold.tag)
