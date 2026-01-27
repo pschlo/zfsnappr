@@ -50,12 +50,15 @@ def prune_snapshots(
     return
 
   log.info(f'Destroying...')
-  for i, snap in enumerate(destroy):
+  _num_destroyed, _num_skipped = 0, 0
+  for snap in destroy:
     try:
       cli.destroy_snapshots(snap.dataset, [snap.shortname])
+      _num_destroyed += 1
     except CalledProcessError:
-      log.warning(f"Failed to destroy snapshot '{snap.longname}'")
-    log.info(f"    {i+1}/{len(destroy)} destroyed")
+      log.warning(f"Failed to destroy snapshot '{snap.shortname}' on '{snap.dataset}'")
+      _num_skipped += 1
+    log.info(f"    {_num_destroyed}/{len(destroy)} destroyed ({_num_skipped} skipped)")
 
 
 def print_policy_result(keep: Collection[Snapshot], destroy: Collection[Snapshot], *, group: str | None = None, group_by: GroupType | None = None):

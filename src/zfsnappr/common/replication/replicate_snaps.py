@@ -172,10 +172,10 @@ def ensure_holds(clis: tuple[ZfsCli,ZfsCli], snaps: tuple[list[Snapshot],list[Sn
   # Ensure latest common snap is held
   src_snap, dest_snap = latest_common_snap
   if holdtags[0] not in holds[0][src_snap.longname]:
-    log.info(f"Creating hold for latest common snapshot '{src_snap.shortname}' at source '{src_snap.dataset}'")
+    log.info(f"Creating hold for latest common snapshot '{src_snap.shortname}' on source '{src_snap.dataset}'")
     clis[0].hold([src_snap.longname], tag=holdtags[0])
   if holdtags[1] not in holds[1][dest_snap.longname]:
-    log.info(f"Creating hold for latest common snapshot '{dest_snap.shortname}' at destination '{dest_snap.dataset}'")
+    log.info(f"Creating hold for latest common snapshot '{dest_snap.shortname}' on destination '{dest_snap.dataset}'")
     clis[1].hold([dest_snap.longname], tag=holdtags[1])
 
   # Remove all other holdtags
