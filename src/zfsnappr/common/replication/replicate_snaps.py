@@ -102,17 +102,14 @@ def replicate_snaps(
     log.info(f"Source '{source_dataset}' has no new snapshots to transfer")
     return
 
-  # Find snapshots that cannot be transferred because their timestamp equals their predecessor
+  # Find snapshot that cannot be transferred because their timestamp equals their predecessor
   for i, (a, b) in enumerate(pairwise(transfer_sequence)):
     if a.timestamp == b.timestamp:
       # Snapshot B cannot be sent
-      log.warning(f"Snapshot '{b.shortname}' on source '{source_dataset}' cannot be transferred because it has the same timestamp as its predecessor snapshot '{a.shortname}'")
-      if i == 0:
-        raise ReplicationError(f"Cannot send any snapshots from source '{source_dataset}' to destination '{dest_dataset}'")
-      else:
-        log.warning(f"Only transferring {i} out of {len(transfer_sequence)-1} snapshots")
-        transfer_sequence = transfer_sequence[:i+1]
-      break
+      raise ReplicationError(
+        f"Cannot transfer snapshots from '{source_dataset}' to '{dest_dataset}': "
+        f"snapshot '{b.shortname}' shares timestamp with predecessor '{a.shortname}'"
+      )
 
 
   ##### PHASE 2: Everything technically good to go, do some quality-of-life checks before actual transfer
