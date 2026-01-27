@@ -90,13 +90,33 @@ def replicate_snaps(
     raise ReplicationError(f"Source and destination have no common snapshot")
   if latest_common_snap[1].guid != dest_snaps[0].guid:
     raise ReplicationError(f"Destination has snapshots newer than latest common snapshot '{latest_common_snap[1].shortname}'")
-  base = next(i for i, s in enumerate(source_snaps) if s.guid == latest_common_snap[0].guid)
+  base_index = next(i for i, s in enumerate(source_snaps) if s.guid == latest_common_snap[0].guid)
+
+  # Determine sequence of source snapshots to transfer.
+  # Default: transfer all source snapshots from common base to latest.
+  transfer_sequence = list(reversed(source_snaps[:base_index+1]))
+
+  assert transfer_sequence  # must at least contain a base snapshot
+  if len(transfer_sequence) <= 1:
+    log.info(f"Source dataset '{source_dataset}' does not have new snapshots to transfer")
+    return
+
+  # Find snapshots that cannot be transferred because their timestamp equals their predecessor
+  for i, (a, b) in enumerate(pairwise(transfer_sequence)):
+    if a.timestamp == b.timestamp:
+      # Snapshot B cannot be sent
+      log.warning(f"Snapshot '{b.shortname}' cannot be transferred because it has the same timestamp as its predecessor")
+      if i == 0:
+        raise ReplicationError(f"Cannot send any snapshots")
+      else:
+        log.warning(f"Only transferring {i} out of {len(transfer_sequence)-1} snapshots")
+        transfer_sequence = transfer_sequence[:i+1]
+      break
+
 
   ##### PHASE 2: Everything technically good to go, do some quality-of-life checks before actual transfer
 
-  if base == 0:
-    log.info(f"Source dataset '{source_dataset}' does not have any new snapshots, nothing to do")
-    return
+  assert len(transfer_sequence) >= 2
   
   # Optionally ensure dest is at snapshot
   if rollback:
@@ -106,8 +126,9 @@ def replicate_snaps(
 
   ##### PHASE 3: Transfer snapshots sequentially
 
-  log.info(f"Transferring {base} snapshots from '{source_dataset}' to '{dest_dataset}'")
-  for i, (_base, _snap) in enumerate(pairwise(reversed(source_snaps[:base+1]))):
+  total = len(transfer_sequence) - 1
+  log.info(f"Transferring {total} snapshots from '{source_dataset}' to '{dest_dataset}'")
+  for i, (_base, _snap) in enumerate(pairwise(transfer_sequence)):
     send_receive_incremental(
       clis=(source_cli, dest_cli),
       dest_dataset=dest_dataset,
@@ -116,8 +137,8 @@ def replicate_snaps(
       base=_base,
       unsafe_release=True  # base is guaranteed to be held
     )
-    log.info(f'{i+1}/{base} transferred')
-  dest_snaps = [s.with_dataset(dest_dataset) for s in source_snaps[:base]] + dest_snaps
+    log.info(f'{i+1}/{total} transferred')
+  dest_snaps = [s.with_dataset(dest_dataset) for s in reversed(transfer_sequence[1:])] + dest_snaps
   log.info(f'Transfer complete')
 
 
