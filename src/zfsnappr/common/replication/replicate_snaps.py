@@ -89,7 +89,7 @@ def replicate_snaps(
   if latest_common_snap is None:
     raise ReplicationError(f"Source and destination have no common snapshot")
   if latest_common_snap[1].guid != dest_snaps[0].guid:
-    raise ReplicationError(f"Destination has snapshots newer than latest common snapshot '{latest_common_snap[0].shortname}'")
+    raise ReplicationError(f"Destination has snapshots newer than latest common snapshot '{latest_common_snap[1].shortname}'")
   base = next(i for i, s in enumerate(source_snaps) if s.guid == latest_common_snap[0].guid)
 
   ##### PHASE 2: Everything technically good to go, do some quality-of-life checks before actual transfer
@@ -148,10 +148,13 @@ def ensure_holds(clis: tuple[ZfsCli,ZfsCli], snaps: tuple[list[Snapshot],list[Sn
     return
 
   # Ensure latest common snap is held
-  if holdtags[0] not in holds[0][latest_common_snap[0].longname]:
-    clis[0].hold([latest_common_snap[0].longname], tag=holdtags[0])
-  if holdtags[1] not in holds[1][latest_common_snap[1].longname]:
-    clis[1].hold([latest_common_snap[1].longname], tag=holdtags[1])
+  src_snap, dest_snap = latest_common_snap
+  if holdtags[0] not in holds[0][src_snap.longname]:
+    log.info(f"Creating hold for latest common snapshot '{src_snap.shortname}' at source")
+    clis[0].hold([src_snap.longname], tag=holdtags[0])
+  if holdtags[1] not in holds[1][dest_snap.longname]:
+    log.info(f"Creating hold for latest common snapshot '{dest_snap.shortname}' at destination")
+    clis[1].hold([dest_snap.longname], tag=holdtags[1])
 
   # Remove all other holdtags
   release_snaps = (
@@ -178,7 +181,7 @@ def determine_latest_common(snaps: tuple[list[Snapshot],list[Snapshot]]) -> tupl
   assert _latest_guid_src == _latest_guid_dest
   latest_guid = _latest_guid_src
   latest_common_snap = (guid_to_snap[0][latest_guid], guid_to_snap[1][latest_guid])
-  log.info(f"Latest common snapshot is '{latest_common_snap[0].longname}' on source, '{latest_common_snap[1].longname}' on destination")
+  log.debug(f"Latest common snapshot is '{latest_common_snap[0].longname}' on source, '{latest_common_snap[1].longname}' on destination")
 
   return latest_common_snap
 
