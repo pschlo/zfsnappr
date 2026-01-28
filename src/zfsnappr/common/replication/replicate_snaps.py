@@ -68,7 +68,7 @@ def replicate_snaps(
   # get dest snaps
   dest_snaps = dest_cli.get_all_snapshots(dest_dataset)
   dest_snaps = sort_snaps_by_time(dest_snaps, reverse=True)
-  
+
   # resolve hold tags
   source_tag = holdtag_src(dest_cli.get_dataset(dest_dataset))
   dest_tag = holdtag_dest(source_cli.get_dataset(source_dataset))
@@ -134,8 +134,7 @@ def replicate_snaps(
       dest_dataset=dest_dataset,
       holdtags=(source_tag, dest_tag),
       snapshot=_snap,
-      base=_base,
-      unsafe_release=True  # base is guaranteed to be held
+      base=_base  # guaranteed to have hold
     )
     log.info(f'{i+1}/{total} transferred')
   dest_snaps = [s.with_dataset(dest_dataset) for s in reversed(transfer_sequence[1:])] + dest_snaps
@@ -154,9 +153,9 @@ def ensure_holds(clis: tuple[ZfsCli,ZfsCli], snaps: tuple[list[Snapshot],list[Sn
     {s.longname: set[str]() for s in snaps[0]},
     {s.longname: set[str]() for s in snaps[1]}
   )
-  for h in clis[0].get_holds([s.longname for s in snaps[0]]):
+  for h in clis[0].get_holds([s.longname for s in snaps[0]], userrefs={s.longname: s.holds for s in snaps[0]}):
     holds[0][h.snap_longname].add(h.tag)
-  for h in clis[1].get_holds([s.longname for s in snaps[1]]):
+  for h in clis[1].get_holds([s.longname for s in snaps[1]], userrefs={s.longname: s.holds for s in snaps[1]}):
     holds[1][h.snap_longname].add(h.tag)
 
   if latest_common_snap is None:

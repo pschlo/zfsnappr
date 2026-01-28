@@ -32,6 +32,7 @@ def _send_receive(
   holdtags: tuple[Holdtag,Holdtag],
   properties: dict[str, str] = {}
 ) -> None:
+  """If base is given, it must have a hold."""
   src_cli, dest_cli = clis
   send_proc, recv_proc = None, None
   terminated_send, terminated_recv = False, False
@@ -87,6 +88,11 @@ def _send_receive(
     dest_tag = holdtags[1] if isinstance(holdtags[1], str) else holdtags[1](src_cli.get_dataset(snapshot.dataset))
     src_cli.hold([snapshot.longname], src_tag)
     dest_cli.hold([snapshot.with_dataset(dest_dataset).longname], dest_tag)
+
+    # If base was given, it must have been held
+    if base is not None:
+      src_cli.release_hold([base.longname], src_tag)
+      dest_cli.release_hold([base.with_dataset(dest_dataset).longname], dest_tag)
   
   except BaseException as e:
     log.info("Cleaning up")
@@ -141,8 +147,7 @@ def send_receive_incremental(
   dest_dataset: str,
   holdtags: tuple[str,str],
   snapshot: Snapshot,
-  base: Optional[Snapshot]=None,
-  unsafe_release: bool=False,
+  base: Snapshot,
 ) -> None:
   _send_receive(
     clis=clis,
@@ -151,11 +156,3 @@ def send_receive_incremental(
     base=base,
     holdtags=holdtags
   )
-  # release base snaps
-  if base:
-    s = base.longname
-    if unsafe_release or clis[0].has_hold(s, holdtags[0]):
-      clis[0].release_hold([s], holdtags[0])
-    s = base.with_dataset(dest_dataset).longname
-    if unsafe_release or clis[1].has_hold(s, holdtags[1]):
-      clis[1].release_hold([s], holdtags[1])

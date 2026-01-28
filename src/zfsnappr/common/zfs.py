@@ -5,6 +5,7 @@ from typing import Optional, IO, Literal
 from collections.abc import Collection
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from itertools import batched
 from enum import StrEnum
 
 
@@ -134,19 +135,25 @@ class ZfsCli(ABC):
     return self._start_command(cmd, stdin=stdin)
 
   # TrueNAS CORE 13.0 does not support holds -p, so we do not fetch timestamp
-  def get_holds(self, snapshots_fullnames: Collection[str]) -> set[Hold]:
+  def get_holds(self, snapshots_fullnames: Collection[str], userrefs: dict[str, int] | None = None) -> set[Hold]:
+    """Optionally pass `userrefs` for performance improvement"""
+    if userrefs is not None:
+      # Filter snapshots down to those that actually have holds
+      snapshots_fullnames = [s for s in snapshots_fullnames if userrefs[s] > 0]
     if not snapshots_fullnames:
       return set()
-    lines = self._run_text_command(['zfs', 'holds', '-H', *snapshots_fullnames]).splitlines()
+
     holds: set[Hold] = set()
-    for line in lines:
-      snapname, tag, _ = line.split('\t')
-      holds.add(Hold(
-        snap_longname=snapname,
-        tag=tag
-      ))
+    for batch in batched(snapshots_fullnames, 5000):  # do not process all snapshots at the same time
+      lines = self._run_text_command(['zfs', 'holds', '-H', *batch]).splitlines()
+      for line in lines:
+        snapname, tag, _ = line.split('\t', 2)
+        holds.add(Hold(
+          snap_longname=snapname,
+          tag=tag
+        ))
     return holds
-  
+
   def has_hold(self, snapshot_fullname: str, tag: str) -> bool:
     """Convenience method for checking if snapshot has hold with certain name"""
     return any((s.tag == tag for s in self.get_holds([snapshot_fullname])))

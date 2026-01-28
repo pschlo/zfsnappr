@@ -26,12 +26,12 @@ def entrypoint(args: Args) -> None:
     log.info(f"No matching snapshots, nothing to do")
 
   # get hold tags
-  _all_holds = cli.get_holds([s.longname for s in snaps])
+  _all_holds = cli.get_holds([s.longname for s in snaps], userrefs={s.longname: s.holds for s in snaps})
   release_holds = [h for h in _all_holds if h.tag.startswith('zfsnappr')]
   if not release_holds:
     log.info(f"Snapshots have no releasable holds")
 
   # Release all zfsnappr holds
   for hold in release_holds:
-    log.info(f"Releasing hold '{hold.tag}' on snapshot {hold.snap_longname}")
+    log.info(f"Releasing hold '{hold.tag}' on snapshot '{hold.snap_longname}'")
     cli.release_hold([hold.snap_longname], tag=hold.tag)
