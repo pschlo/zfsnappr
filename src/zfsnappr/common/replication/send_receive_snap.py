@@ -134,7 +134,7 @@ def send_receive_initial(
     holdtags=holdtags,
     properties=properties
   )
-  
+
 
 def send_receive_incremental(
   clis: tuple[ZfsCli, ZfsCli],

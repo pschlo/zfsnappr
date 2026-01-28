@@ -16,14 +16,28 @@ def replicate(
 ):
   source_snaps = source_cli.get_all_snapshots(source_dataset, recursive=recursive)
   source_snaps = sorted(source_snaps, key=lambda s: (s.timestamp, s.guid), reverse=True)
+
+  # Precompute destination datasets that already exist
+  existing_dest_datasets = {d.name for d in dest_cli.get_all_datasets()}
+
   if recursive:
-    replicate_hierarchy(source_cli, source_dataset, source_snaps, dest_cli, dest_dataset, initialize=initialize, rollback=rollback)
+    replicate_hierarchy(
+      source_cli,
+      source_dataset,
+      source_snaps,
+      dest_cli,
+      dest_dataset,
+      existing_dest_datasets=existing_dest_datasets,
+      initialize=initialize,
+      rollback=rollback
+    )
   else:
     replicate_snaps(
       source_cli=source_cli,
       source_snaps=source_snaps,
       dest_cli=dest_cli,
       dest_dataset=dest_dataset,
+      existing_dest_datasets=existing_dest_datasets,
       initialize=initialize,
-      rollback=rollback
+      rollback=rollback,
     )
