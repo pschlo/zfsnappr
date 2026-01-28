@@ -74,7 +74,7 @@ def replicate_snaps(
   dest_tag = holdtag_dest(source_cli.get_dataset(source_dataset))
 
   # Determine latest common snapshot
-  latest_common_snap = determine_latest_common((source_snaps, dest_snaps))
+  base_snap = determine_latest_common((source_snaps, dest_snaps))
 
   # Update holds
   ensure_holds(
@@ -82,24 +82,34 @@ def replicate_snaps(
     (source_snaps, dest_snaps),
     (source_tag, dest_tag),
     datasets=(source_dataset, dest_dataset),
-    latest_common_snap=latest_common_snap
+    latest_common_snap=base_snap
   )
 
   if not dest_snaps:
     raise ReplicationError(f"Destination '{dest_dataset}' does not contain any snapshots")
 
   # figure out base index
-  if latest_common_snap is None:
+  if base_snap is None:
     raise ReplicationError(f"Source '{source_dataset}' and destination '{dest_dataset}' have no common snapshot")
-  if latest_common_snap[1].guid != dest_snaps[0].guid:
-    raise ReplicationError(f"Destination '{dest_dataset}' has snapshots newer than latest common snapshot '{latest_common_snap[1].shortname}'")
-  base_index = next(i for i, s in enumerate(source_snaps) if s.guid == latest_common_snap[0].guid)
+  if base_snap[1].guid != dest_snaps[0].guid:
+    raise ReplicationError(f"Destination '{dest_dataset}' has snapshots newer than latest common snapshot '{base_snap[1].shortname}'")
+  base_index = next(i for i, s in enumerate(source_snaps) if s.guid == base_snap[0].guid)
+
+  # Ensure base snapshot on dest has correct tags; this may help if previous replication was aborted before tags could be set
+  if (_src_tags := base_snap[0].tags) is not None:
+    _dest_tags = base_snap[1].tags or set()
+    _missing = _src_tags - _dest_tags
+    if _missing:
+      log.info(f"Adding missing tags on base snapshot '{base_snap[1].shortname}' at destination '{dest_dataset}'")
+      dest_cli.set_tags(base_snap[1].longname, _dest_tags | _missing)
 
   # Determine sequence of source snapshots to transfer.
   # Default: transfer all source snapshots from common base to latest.
   transfer_sequence = list(reversed(source_snaps[:base_index+1]))
 
-  assert transfer_sequence  # must at least contain a base snapshot
+  # must at least contain a base snapshot
+  assert transfer_sequence
+
   if len(transfer_sequence) <= 1:
     log.info(f"Source '{source_dataset}' has no new snapshots to transfer")
     return

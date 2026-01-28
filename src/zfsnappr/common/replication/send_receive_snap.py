@@ -89,7 +89,7 @@ def _send_receive(
     src_cli.hold([snapshot.longname], src_tag)
     dest_cli.hold([snapshot.with_dataset(dest_dataset).longname], dest_tag)
 
-    # If base was given, it must have been held
+    # Release base snaps (must have hold)
     if base is not None:
       src_cli.release_hold([base.longname], src_tag)
       dest_cli.release_hold([base.with_dataset(dest_dataset).longname], dest_tag)
