@@ -145,6 +145,7 @@ class ZfsCli(ABC):
 
     holds: set[Hold] = set()
     for batch in batched(snapshots_fullnames, 5000):  # do not process all snapshots at the same time
+      print(f"Checking {len(batch)} snapshot holds")
       lines = self._run_text_command(['zfs', 'holds', '-H', *batch]).splitlines()
       for line in lines:
         snapname, tag, _ = line.split('\t', 2)
