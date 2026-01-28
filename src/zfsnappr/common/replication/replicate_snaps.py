@@ -7,6 +7,7 @@ from itertools import pairwise
 from ..zfs import Snapshot, ZfsCli, ZfsProperty, Dataset
 from .send_receive_snap import send_receive_incremental, send_receive_initial
 from zfsnappr.common.exception import ReplicationError
+from zfsnappr.common.sort import sort_snaps_by_time
 
 
 log = logging.getLogger(__name__)
@@ -44,7 +45,7 @@ def replicate_snaps(
   source_dataset = next(iter(source_snaps)).dataset
 
   # sorting is required
-  source_snaps = sorted(source_snaps, key=lambda s: (s.timestamp, s.guid), reverse=True)
+  source_snaps = sort_snaps_by_time(source_snaps, reverse=True)
 
 
   ##### PHASE 1: Critical preparation, check for abort conditions
@@ -66,7 +67,7 @@ def replicate_snaps(
 
   # get dest snaps
   dest_snaps = dest_cli.get_all_snapshots(dest_dataset)
-  dest_snaps = sorted(dest_snaps, key=lambda s: (s.timestamp, s.guid), reverse=True)
+  dest_snaps = sort_snaps_by_time(dest_snaps, reverse=True)
   
   # resolve hold tags
   source_tag = holdtag_src(dest_cli.get_dataset(dest_dataset))

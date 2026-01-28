@@ -8,6 +8,7 @@ from .args import Args
 from zfsnappr.common.filter import filter_snaps, parse_tags
 from zfsnappr.common import filter
 from zfsnappr.common.utils import get_zfs_cli
+from zfsnappr.common.sort import sort_snaps_by_time
 
 
 log = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ def entrypoint(args: Args) -> None:
 
   snaps = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive)
   snaps = filter_snaps(snaps, shortname=args.snapshot)
-  snaps = sorted(snaps, key=lambda s: (s.timestamp, s.guid))
+  snaps = sort_snaps_by_time(snaps)
   if not snaps:
     log.info(f"No matching snapshots, nothing to do")
 

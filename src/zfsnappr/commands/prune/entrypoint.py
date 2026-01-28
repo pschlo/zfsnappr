@@ -5,6 +5,7 @@ import logging
 from zfsnappr.common.zfs import ZfsProperty
 from zfsnappr.common import filter
 from zfsnappr.common.utils import get_zfs_cli
+from zfsnappr.common.sort import sort_snaps_by_time
 
 from .policy import KeepPolicy
 from .prune_snaps import prune_snapshots
@@ -42,7 +43,7 @@ def entrypoint(args: Args):
 
   snaps = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive)
   snaps = filter.filter_snaps(snaps, tag=filter.parse_tags(args.tag), shortname=filter.parse_shortnames(args.snapshot))
-  snaps = sorted(snaps, key=lambda s: (s.timestamp, s.guid))
+  snaps = sort_snaps_by_time(snaps)
   if not snaps:
     log.info(f'No matching snapshots, nothing to do')
     return

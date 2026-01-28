@@ -3,6 +3,7 @@ from __future__ import annotations
 from ..zfs import ZfsCli, ZfsProperty
 from .replicate_snaps import replicate_snaps
 from .replicate_hierarchy import replicate_hierarchy
+from zfsnappr.common.sort import sort_snaps_by_time
 
 
 def replicate(
@@ -15,7 +16,7 @@ def replicate(
   rollback: bool=False
 ):
   source_snaps = source_cli.get_all_snapshots(source_dataset, recursive=recursive)
-  source_snaps = sorted(source_snaps, key=lambda s: (s.timestamp, s.guid), reverse=True)
+  source_snaps = sort_snaps_by_time(source_snaps, reverse=True)
 
   # Precompute destination datasets that already exist
   existing_dest_datasets = {d.name for d in dest_cli.get_all_datasets()}

@@ -9,6 +9,7 @@ import re
 import logging
 
 from zfsnappr.common.zfs import Snapshot
+from zfsnappr.common.sort import sort_snaps_by_time
 
 
 log = logging.getLogger(__name__)
@@ -109,7 +110,7 @@ Keeps snapshot ordering intact
 """
 def apply_policy(snapshots: Collection[Snapshot], policy: KeepPolicy) -> tuple[list[Snapshot], list[Snapshot]]:
   # all snapshots, sorted from latest to oldest. Sorting is important for the algorithm to work correctly.
-  snaps = sorted(snapshots, key=lambda s: (s.timestamp, s.guid), reverse=True)
+  snaps = sort_snaps_by_time(snapshots, reverse=True)
   keep: set[Snapshot] = set()
   destroy: set[Snapshot] = set()
   
