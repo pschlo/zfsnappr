@@ -148,7 +148,7 @@ class ZfsCli(ABC):
       return set()
 
     holds: set[Hold] = set()
-    for batch in batched(snapshots_fullnames, 5000):  # do not process all snapshots at the same time
+    for batch in batched(snapshots_fullnames, 5000):  # limit how many snapshots can be processed in a single command
       lines = self._run_text_command(['zfs', 'holds', '-H', *batch]).splitlines()
       for line in lines:
         snapname, tag, _ = line.split('\t', 2)
@@ -158,10 +158,17 @@ class ZfsCli(ABC):
         ))
     return holds
 
+  def get_holdtags(self, snapshots_fullnames: Collection[str], userrefs: dict[str, int] | None = None) -> dict[str, set[str]]:
+    """Convenience method"""
+    holdtags: dict[str, set[str]] = {s: set() for s in snapshots_fullnames}
+    for hold in self.get_holds(snapshots_fullnames, userrefs=userrefs):
+      holdtags[hold.snap_longname].add(hold.tag)
+    return holdtags
+
   def has_hold(self, snapshot_fullname: str, tag: str) -> bool:
     """Convenience method for checking if snapshot has hold with certain name"""
     return any((s.tag == tag for s in self.get_holds([snapshot_fullname])))
-  
+
   def hold(self, snapshots_fullnames: Collection[str], tag: str) -> None:
     if not snapshots_fullnames:
       return

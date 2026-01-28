@@ -30,9 +30,7 @@ def entrypoint(args: Args) -> None:
   snaps = sort_snaps_by_time(snaps)
 
   # get hold tags for all snapshots with holds
-  holdtags: dict[str, set[str]] = {s.longname: set() for s in snaps}
-  for hold in cli.get_holds([s.longname for s in snaps], userrefs={s.longname: s.holds for s in snaps}):
-    holdtags[hold.snap_longname].add(hold.tag)
+  holdtags = cli.get_holdtags([s.longname for s in snaps], userrefs={s.longname: s.holds for s in snaps})
 
   fields: list[Field] = [
     Field('DATASET',    lambda s: s.dataset),

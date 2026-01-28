@@ -160,13 +160,9 @@ def ensure_holds(clis: tuple[ZfsCli,ZfsCli], snaps: tuple[list[Snapshot],list[Sn
   """
   # Get holds
   holds = (
-    {s.longname: set[str]() for s in snaps[0]},
-    {s.longname: set[str]() for s in snaps[1]}
+    clis[0].get_holdtags([s.longname for s in snaps[0]], userrefs={s.longname: s.holds for s in snaps[0]}),
+    clis[1].get_holdtags([s.longname for s in snaps[1]], userrefs={s.longname: s.holds for s in snaps[1]})
   )
-  for h in clis[0].get_holds([s.longname for s in snaps[0]], userrefs={s.longname: s.holds for s in snaps[0]}):
-    holds[0][h.snap_longname].add(h.tag)
-  for h in clis[1].get_holds([s.longname for s in snaps[1]], userrefs={s.longname: s.holds for s in snaps[1]}):
-    holds[1][h.snap_longname].add(h.tag)
 
   if latest_common_snap is None:
     # Remove all peer holdtags
