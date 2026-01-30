@@ -14,8 +14,8 @@ def group_snaps_by[T: Hashable](snapshots: Collection[Snapshot], get_group: Call
 
 
 class DatasetParseError(Exception):
-  def __init__(self) -> None:
-    super().__init__("Invalid dataset name")
+  def __init__(self, name: str) -> None:
+    super().__init__(f"Invalid dataset name '{name}'")
 
 
 ALNUM = set(string.ascii_letters + string.digits + '_-')
