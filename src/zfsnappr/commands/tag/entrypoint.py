@@ -50,7 +50,7 @@ def entrypoint(args: Args) -> None:
 
   # --- get snapshots ---
   props = [p for p in [args.add_from_prop, args.set_from_prop] if p is not None]
-  _all_snaps = cli.get_all_snapshots(dataset, recursive=args.recursive, properties=props)
+  _all_snaps = cli.get_all_snapshots(datasets=[dataset], recursive=args.recursive, properties=props)
   snapshots = filter.filter_snaps(_all_snaps, tag=filter.parse_tags(args.tag), shortname=filter.parse_shortnames(args.snapshot))
   if not snapshots:
     log.info(f"No matching snapshots, nothing to do")

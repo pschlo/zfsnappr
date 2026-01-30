@@ -18,7 +18,8 @@ def entrypoint(args: Args) -> None:
   if dest_dataset is None:
     raise ValueError(f"No dest dataset specified")
 
-  log.info(f'Pushing from source dataset "{source_dataset}" to dest dataset "{dest_dataset}"')
+  prefix = "Recursively pushing" if args.recursive else "Pushing"
+  log.info(prefix + f' from source "{source_dataset}" to dest "{dest_dataset}"')
 
   replicate(
     source_cli=source_cli,
@@ -27,5 +28,6 @@ def entrypoint(args: Args) -> None:
     dest_dataset=dest_dataset,
     recursive=args.recursive,
     initialize=args.init,
-    rollback=args.rollback
+    rollback=args.rollback,
+    exclude_datasets=args.exclude_dataset
   )

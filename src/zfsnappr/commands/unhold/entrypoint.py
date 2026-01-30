@@ -19,7 +19,7 @@ def entrypoint(args: Args) -> None:
   if dataset is None:
     raise ValueError(f"No dataset specified")
 
-  snaps = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive)
+  snaps = cli.get_all_snapshots(datasets=[dataset], recursive=args.recursive)
   snaps = filter_snaps(snaps, shortname=args.snapshot)
   snaps = sort_snaps_by_time(snaps)
   if not snaps:

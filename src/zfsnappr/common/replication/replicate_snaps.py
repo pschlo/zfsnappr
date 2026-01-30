@@ -66,7 +66,7 @@ def replicate_snaps(
       raise ReplicationError(f"Destination dataset '{dest_dataset}' does not exist and will not be created")
 
   # get dest snaps
-  dest_snaps = dest_cli.get_all_snapshots(dest_dataset)
+  dest_snaps = dest_cli.get_all_snapshots(datasets=[dest_dataset])
   dest_snaps = sort_snaps_by_time(dest_snaps, reverse=True)
 
   # resolve hold tags

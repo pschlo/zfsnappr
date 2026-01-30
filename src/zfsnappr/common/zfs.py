@@ -244,24 +244,33 @@ class ZfsCli(ABC):
       snaps.append(Snapshot(props))
     return snaps
 
-  def get_all_snapshots(self,
-    dataset: Optional[str] = None,
+  def get_all_snapshots(
+    self,
+    datasets: Collection[str] | None = None,
     recursive: bool = False,
+    exclude_datasets: Collection[str] | None = None,
     properties: Collection[str] = [],
   ) -> list[Snapshot]:
     properties = list(dict.fromkeys(REQUIRED_PROPS + list(properties)))  # eliminate duplicates
+    exclude_datasets = set(exclude_datasets) if exclude_datasets else set()
+    if datasets is not None and not datasets:
+      # empty dataset container
+      return []
 
     cmd = ['zfs', 'list', '-Hp', '-t', 'snapshot', '-o', ','.join(properties)]
     if recursive:
       cmd += ['-r']
-    if dataset:
-      cmd += [dataset]
+    if datasets is not None:
+      cmd += list(datasets)
     lines = self._run_text_command(cmd).splitlines()
 
     snapshots: list[Snapshot] = []
     for line in lines:
       props = {p: v for p, v in zip(properties, line.split('\t'))}
       snapshots.append(Snapshot(props))
+
+    # Filter snapshots
+    snapshots = [s for s in snapshots if s.dataset not in exclude_datasets]
 
     return snapshots
 

@@ -25,7 +25,7 @@ class Field:
 def entrypoint(args: Args) -> None:
   cli, dataset = get_zfs_cli(args.dataset_spec)
 
-  snaps = cli.get_all_snapshots(dataset=dataset, recursive=args.recursive)
+  snaps = cli.get_all_snapshots(datasets=[dataset] if dataset else None, recursive=args.recursive)
   snaps = filter_snaps(snaps, tag=parse_tags(args.tag))
   snaps = sort_snaps_by_time(snaps)
 

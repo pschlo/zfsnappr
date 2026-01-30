@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections.abc import Collection
 
 from ..zfs import ZfsCli, ZfsProperty
 from .replicate_snaps import replicate_snaps
@@ -11,11 +12,16 @@ def replicate(
   source_dataset: str,
   dest_cli: ZfsCli,
   dest_dataset: str,
-  recursive: bool=False,
-  initialize: bool=False,
-  rollback: bool=False
+  recursive: bool = False,
+  initialize: bool = False,
+  rollback: bool = False,
+  exclude_datasets: Collection[str] | None = None
 ):
-  source_snaps = source_cli.get_all_snapshots(source_dataset, recursive=recursive)
+  source_snaps = source_cli.get_all_snapshots(
+    datasets=[source_dataset],
+    recursive=recursive,
+    exclude_datasets=exclude_datasets
+  )
   source_snaps = sort_snaps_by_time(source_snaps, reverse=True)
 
   # Precompute destination datasets that already exist
